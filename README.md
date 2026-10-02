@@ -9,14 +9,16 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
 中文：基于无状态引擎契约的 EVE 配船网页（复现 Pyfa 界面功能）。引擎通过可切换的适配层调用，可在浏览器内运行（TypeScript / WASM），也可调用本地 HTTP 引擎。数据来自 eve-sde-pipeline 的 Release。界面支持中文物品名。
 
 ## Features
-- **Market browser and search.** Browse the market-group tree from the dataset. Search names in English or Chinese, with kind filters. "Show info" lists attributes, ship bonus text (traits) and required skills.
+- **Market browser and search.** Browse the market-group tree from the dataset. Search names in English or Chinese, with kind filters. "Show info" lists attributes, ship bonus text (traits) and required skills; opened on a fitted module, drone or the ship it adds the engine-computed fitted values (changed values highlighted).
 - **Fitting window.**
   - High/mid/low/rig/subsystem/service slots, using totals from the engine and showing empty slots.
   - Module states: offline, online, active, overheated (click for the next state, right-click for the previous).
   - Charges and ammo, filtered by charge group, size and capacity.
   - Mutaplasmids: choose one and set each rolled attribute with a slider.
   - Drones (quantity and number active), fighters (squadron size, launched or not, per-ability toggles with Pyfa's defaults), implants and boosters (each slot holds one; booster side effects can be switched on one at a time), cargo.
+  - Per-module spool-up for Triglavian weapons and mutadaptive repairers (overrides the fit default).
   - T3D modes, fit notes.
+  - Undo / redo per fit (buttons, Ctrl+Z / Ctrl+Y).
 - **Character and skills.** Built-in All 5, All 4 and All 0 characters, plus custom characters with a default level and per-skill levels. Shows which skills the fit requires and which are missing, with a "train required" button. Pilot security status.
 - **Damage patterns and target profiles.** Built-in presets, including NPC factions, plus custom ones. Damage patterns feed EHP and RAH adaptation; target profiles feed DPS vs target and the graphs.
 - **Projected, fleet and environment.**
@@ -60,7 +62,7 @@ gh release download -R EX-CT/eve-sde-pipeline -p 'dataset-*.json.gz' -O public/d
 # engine D: (in eve-dogma-lab@variant-d/variant-d) npm ci && npm run build:web; copy dist-web/eve-dogma-ts.mjs to public/engines/d/
 npm run dev
 node tools/smoke.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker   # headless check
-node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-end (29 checks); engine arg may be 'http&http=http://127.0.0.1:8787'
+node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-end (31 checks); engine arg may be 'http&http=http://127.0.0.1:8787'
 ```
 
 ## Deployment

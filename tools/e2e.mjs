@@ -96,6 +96,14 @@ const toggled = await p.evaluate(() => { const l = [...document.querySelectorAll
 s = await waitNew(s);
 check('booster side effect lowers armor HP', toggled && s.defense?.hp?.armor < a0, `${a0} -> ${s.defense?.hp?.armor}`);
 
+// undo / redo
+await clickText('header button', '↶ Undo');
+s = await waitNew(s);
+const aU = s.defense?.hp?.armor;
+await clickText('header button', '↷ Redo');
+s = await waitNew(s);
+check('undo / redo', aU === a0 && s.defense?.hp?.armor < a0, `${a0} -undo-> ${aU} -redo-> ${s.defense?.hp?.armor}`);
+
 // show info on a fitted module -> engine-computed fitted values
 await p.evaluate(() => [...document.querySelectorAll('.mod .mname')].find((e) => e.textContent.startsWith('Heavy Neutron Blaster II')).click());
 await p.waitForFunction(() => document.querySelector('.dialog table.attrs thead') || document.querySelector('.dialog')?.textContent.includes('unavailable') || document.querySelector('.dialog')?.textContent.includes('did not return'), { timeout: 30000 });
@@ -141,6 +149,15 @@ await chSel.select(cid);
 s = await waitNew(s);
 check('custom character (all 0) lowers dps', s.offense.total.dps.total < d5, `${d5} -> ${s.offense.total.dps.total}`);
 check('missing skills reported', (s.violations ?? []).some((v) => v.code === 'MISSING_SKILL'));
+// per-module spool-up (Triglavian disintegrator)
+await p.goto(`${url}?engine=${engine}&eft=${encodeURIComponent('[Vedmak, E2E Vedmak]\n\nHeavy Entropic Disintegrator II, Baryon Exotic Plasma M\n')}`, { waitUntil: 'networkidle0', timeout: 120000 });
+await p.waitForFunction(() => window.__lastStats?.ship?.name === 'Vedmak', { timeout: 120000 });
+s = await stats();
+const sp1 = s.offense?.total?.weapon_dps;
+await p.select('select.spool', '0');
+s = await waitNew(s);
+check('per-module spool 0% lowers disintegrator dps', s.offense?.total?.weapon_dps < sp1, `${sp1} -> ${s.offense?.total?.weapon_dps}`);
+
 // ESI JSON re-import (new fit)
 await clickText('header button', 'Import / export');
 await p.evaluate((t) => { const ta = document.querySelector('textarea.eft'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(ta, t); ta.dispatchEvent(new Event('input', { bubbles: true })); }, esi);

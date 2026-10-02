@@ -76,7 +76,40 @@ export default function App() {
   }, [ecfg.backend, ecfg.httpUrl, ecfg.datasetUrl, ecfg.engineUrl, ecfg.wasmUrl]);
 
   const setLib = useCallback((l: Library) => update((s) => ({ ...s, lib: l })), [update]);
-  const setFit = useCallback((f: Fit) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, [f.id]: f } } })), [update]);
+  const putFit = useCallback((f: Fit) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, [f.id]: f } } })), [update]);
+  // undo / redo per fit (rapid changes such as slider drags are coalesced)
+  const stateRef = useRef(state); stateRef.current = state;
+  const hist = useRef<Record<string, { past: Fit[]; future: Fit[]; at: number }>>({});
+  const [, setHistTick] = useState(0);
+  const setFit = useCallback((f: Fit) => {
+    const prev = stateRef.current.lib.fits[f.id];
+    const h = (hist.current[f.id] ??= { past: [], future: [], at: 0 });
+    const now = Date.now();
+    if (prev && now - h.at > 400) { h.past.push(prev); if (h.past.length > 100) h.past.shift(); }
+    h.at = now; h.future = [];
+    putFit(f); setHistTick((x) => x + 1);
+  }, [putFit]);
+  const undoRedo = useCallback((dir: 'undo' | 'redo') => {
+    const id = stateRef.current.settings.activeFitId;
+    const cur = id ? stateRef.current.lib.fits[id] : null;
+    const h = id ? hist.current[id] : null;
+    if (!cur || !h) return;
+    const from = dir === 'undo' ? h.past : h.future, to = dir === 'undo' ? h.future : h.past;
+    const f = from.pop();
+    if (!f) return;
+    to.push(cur); h.at = 0;
+    putFit(f); setHistTick((x) => x + 1);
+  }, [putFit]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || (e.target as HTMLElement)?.closest?.('input, textarea, select')) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); undoRedo('undo'); }
+      else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); undoRedo('redo'); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undoRedo]);
   const addFit = useCallback((f: Fit) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, [f.id]: f } }, settings: { ...s.settings, activeFitId: f.id } })), [update]);
 
   // first visit / ?dna= / ?eft= : seed a fit so the page computes something right away
@@ -180,6 +213,8 @@ export default function App() {
         <h1>EVE Fit Web</h1>
         <span className="muted">SDE {ds.build}{ds.raw.dataset_revision ? ` r${ds.raw.dataset_revision}` : ''}</span>
         <EngineSettings cfg={settings.engine} status={engineStatus} onChange={(c) => update((s) => ({ ...s, settings: { ...s.settings, engine: c } }))} />
+        <button className="undo" title="Undo (Ctrl+Z)" disabled={!(fit && hist.current[fit.id]?.past.length)} onClick={() => undoRedo('undo')}>↶ Undo</button>
+        <button className="redo" title="Redo (Ctrl+Y)" disabled={!(fit && hist.current[fit.id]?.future.length)} onClick={() => undoRedo('redo')}>↷ Redo</button>
         <button onClick={() => setShowIO(true)}>Import / export</button>
         <select value={settings.lang} onChange={(e) => setLang(e.target.value as 'en' | 'zh')}><option value="en">English</option><option value="zh">中文</option></select>
       </header>

@@ -46,6 +46,12 @@ function ModuleRow({ ds, m, idx, fit, stats, onChange, onInfo }: { ds: Dataset; 
           {charges.map((c) => <option key={c} value={c}>{ds.name(c)}</option>)}
         </select>
       )}
+      {(ds.attr(m.type_id, 'damageMultiplierBonusMax') != null || ds.attr(m.type_id, 'repairMultiplierBonusMax') != null) && (
+        <select className="spool" title="spool-up for this module (default: fit option)" value={m.spool == null ? '' : String(m.spool)} onChange={(e) => set({ spool: e.target.value === '' ? null : +e.target.value })}>
+          <option value="">spool: default</option>
+          {[0, 0.25, 0.5, 0.75, 1].map((v) => <option key={v} value={v}>spool {v * 100}%</option>)}
+        </select>
+      )}
       {mutas.length > 0 && <button className="mini" onClick={() => setShowMuta(!showMuta)} title="Mutaplasmid">✦</button>}
       <span className="mstat">{wpn ? `${wpn.dps?.total?.toFixed(1)} dps` : modStats?.cap_use_gj_s ? `${modStats.cap_use_gj_s.toFixed(2)} GJ/s` : ''}</span>
       <button className="mini" onClick={remove} title="Remove">✕</button>
