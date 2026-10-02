@@ -12,6 +12,7 @@ import { Graphs } from './ui/Graphs';
 import { ImportExport } from './ui/ImportExport';
 import { ItemInfo, Market, type InfoCtx } from './ui/Market';
 import { FitBrowser } from './ui/FitBrowser';
+import { PriceBox } from './ui/PriceBox';
 import { Profiles } from './ui/Profiles';
 import { Stats } from './ui/Stats';
 import { Tabs } from './ui/common';
@@ -239,7 +240,7 @@ export default function App() {
             ? <Fitting ds={ds} fit={fit} lib={lib} stats={stats} onChange={setFit} onInfo={setInfo} addProjected={addProjected} setAddProjected={setAddProjected} />
             : <Graphs ds={ds} st={stats} target={lib.targetProfiles[fit.target_profile_id]} />}
         </section>
-        <aside className="right"><Stats st={stats} busy={busy} ms={ms} error={calcErr} /></aside>
+        <aside className="right"><Stats st={stats} busy={busy} ms={ms} error={calcErr} /><PriceBox ds={ds} fit={fit} /></aside>
       </main>
       <footer className="muted">
         Engine via a swappable adapter (in-browser TS / WASM worker or HTTP). Data: <a href="https://github.com/EX-CT/eve-sde-pipeline/releases">EX-CT/eve-sde-pipeline</a> release.

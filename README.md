@@ -34,6 +34,7 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
   - capacitor: stability, delta, injectors
   - navigation, targeting (lock times, jam chance), drones
   - violations and engine warnings
+- **Price:** fit value (ship, fittings incl. loaded charges and mutaplasmids, drones/fighters, implants/boosters, cargo) from the public ESI market prices endpoint. Opt-in button, cached for 6 h.
 - **Graphs:** DPS vs range (turret hit chance, missile application, drones), capacitor vs time, regen vs fill %, speed and distance vs time, lock time vs signature, warp time vs distance.
 - **Import and export:** EFT text (including Pyfa-style mutated module blocks `[N] Base` / mutaplasmid / attribute values), DNA, ESI fitting JSON (import and export), multibuy list (export), and share links (`?dna=`, `?eft=`).
 - **Fit browser:** saved fits grouped by ship group, search, duplicate/delete, JSON backup and restore of the whole library (fits, characters, profiles). Pasting several EFT fits at once imports them all.
@@ -65,7 +66,7 @@ gh release download -R EX-CT/eve-sde-pipeline -p 'dataset-*.json.gz' -O public/d
 # engine D: (in eve-dogma-lab@variant-d/variant-d) npm ci && npm run build:web; copy dist-web/eve-dogma-ts.mjs to public/engines/d/
 npm run dev
 node tools/smoke.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker   # headless check
-node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-end (35 checks); engine arg may be 'http&http=http://127.0.0.1:8787'
+node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-end (36 checks); engine arg may be 'http&http=http://127.0.0.1:8787'
 ```
 
 ## Deployment

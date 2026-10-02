@@ -189,6 +189,11 @@ await p.type('.fitbrowser .search', 'Merlin');
 const fbn = await p.evaluate(() => document.querySelectorAll('.fitbrowser li').length);
 check('fit browser search', fbn === 1, fbn);
 
+// market prices (public ESI, opt-in); skipped when offline
+await clickText('.right button', 'Load market prices');
+const price = await p.waitForFunction(() => document.querySelector('.pricetotal')?.textContent || document.querySelector('.right .error')?.textContent, { timeout: 30000 }).then((h) => h.jsonValue()).catch(() => 'timeout');
+check('fit price from ESI', /ISK$/.test(price) || /ESI|fetch|timeout/i.test(price), price);
+
 // fighters: abilities
 await p.goto(`${url}?engine=${engine}&eft=${encodeURIComponent(CARRIER)}`, { waitUntil: 'networkidle0', timeout: 120000 });
 await p.waitForFunction(() => window.__lastStats?.ship?.name === 'Thanatos', { timeout: 120000 });

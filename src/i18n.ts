@@ -19,6 +19,7 @@ const ZH: Record<string, string> = {
   'Project fit': '投射配置', 'Fleet boosters (command bursts)': '舰队加成（指挥脉冲）', 'Add booster': '添加加成舰',
   'Manual fleet buffs': '手动舰队增益', Environment: '环境', Fitting: '装配', Options: '选项', 'Projected / fleet / environment': '投射 / 舰队 / 环境',
   'High slots': '高槽', 'Mid slots': '中槽', 'Low slots': '低槽', Rigs: '改装件', Subsystems: '子系统', Services: '服务槽',
+  Price: '价格', 'Load market prices (ESI)': '加载市场价格 (ESI)', Ship: '舰船', Fittings: '装备', 'Drones / fighters': '无人机 / 铁骑舰载机',
   'Compute a fit first.': '请先计算配置。', Problems: '问题',
   'search fits / ships…': '搜索配置 / 舰船…', 'Pick a ship in the Market tab to start a new fit.': '在市场标签中选择舰船以新建配置。',
 };
