@@ -19,6 +19,7 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
   - Per-module spool-up for Triglavian weapons and mutadaptive repairers (overrides the fit default).
   - T3D modes, fit notes.
   - Undo / redo per fit (buttons, Ctrl+Z / Ctrl+Y).
+  - Attribute overrides (Pyfa's override editor): in Show info, set a base attribute value for a type in this fit (sent as `overrides`).
 - **Character and skills.** Built-in All 5, All 4 and All 0 characters, plus custom characters with a default level and per-skill levels. Shows which skills the fit requires and which are missing, with a "train required" button. Pilot security status.
 - **Damage patterns and target profiles.** Built-in presets, including NPC factions, plus custom ones. Damage patterns feed EHP and RAH adaptation; target profiles feed DPS vs target and the graphs.
 - **Projected, fleet and environment.**
@@ -64,7 +65,7 @@ gh release download -R EX-CT/eve-sde-pipeline -p 'dataset-*.json.gz' -O public/d
 # engine D: (in eve-dogma-lab@variant-d/variant-d) npm ci && npm run build:web; copy dist-web/eve-dogma-ts.mjs to public/engines/d/
 npm run dev
 node tools/smoke.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker   # headless check
-node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-end (33 checks); engine arg may be 'http&http=http://127.0.0.1:8787'
+node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-end (35 checks); engine arg may be 'http&http=http://127.0.0.1:8787'
 ```
 
 ## Deployment

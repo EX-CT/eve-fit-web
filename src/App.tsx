@@ -246,7 +246,9 @@ export default function App() {
         EVE Online data © CCP hf. · <a href="https://github.com/EX-CT/eve-fit-web">source</a>
         {build && <> · build <a href={build.run}>{build.web}</a> ({build.built_at?.replace('T', ' ').replace(/:\d\dZ$/, ' UTC')}) · dataset {build.dataset_tag} · engine D {build.engine_d} · engine F {build.engine_f ?? 'n/a'}</>}
       </footer>
-      {info != null && <ItemInfo ds={ds} id={info} fitted={fitted} fittedNote={fittedNote} onClose={() => setInfo(null)} />}
+      {info != null && <ItemInfo ds={ds} id={info} fitted={fitted} fittedNote={fittedNote} onClose={() => setInfo(null)}
+        overrides={fit ? Object.fromEntries((fit.overrides ?? []).filter((o) => o.type_id === info).map((o) => [o.attribute_id, o.value])) : undefined}
+        onOverride={fit ? (a, v) => setFit({ ...fit, overrides: [...(fit.overrides ?? []).filter((o) => !(o.type_id === info && o.attribute_id === a)), ...(v == null ? [] : [{ type_id: info, attribute_id: a, value: v }])] }) : undefined} />}
       {showIO && <ImportExport ds={ds} fit={fit} stats={stats} onImport={(f) => { addFit(f); setShowIO(false); }} onClose={() => setShowIO(false)} />}
     </div>
   );

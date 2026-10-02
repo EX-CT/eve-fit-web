@@ -109,6 +109,16 @@ await p.evaluate(() => [...document.querySelectorAll('.mod .mname')].find((e) =>
 await p.waitForFunction(() => document.querySelector('.dialog table.attrs thead') || document.querySelector('.dialog')?.textContent.includes('unavailable') || document.querySelector('.dialog')?.textContent.includes('did not return'), { timeout: 30000 });
 const fi = await p.evaluate(() => ({ head: !!document.querySelector('.dialog table.attrs thead'), changed: document.querySelectorAll('.dialog tr.changed').length, note: document.querySelector('.dialog p.muted')?.textContent }));
 check('show info: fitted attribute values', fi.head && fi.changed > 0, `${fi.changed} changed; ${fi.note}`);
+// attribute override (Pyfa-style): damageMultiplier of the blaster type
+const wd0 = s.offense?.total?.weapon_dps;
+await p.click('.dialog input.editov');
+await p.waitForSelector('.dialog input.ovin[data-attr="64"]');
+await p.type('.dialog input.ovin[data-attr="64"]', '10');
+s = await waitNew(s);
+check('attribute override raises weapon dps', s.offense?.total?.weapon_dps > wd0 * 1.5, `${wd0} -> ${s.offense?.total?.weapon_dps}`);
+await p.evaluate(() => { const i = document.querySelector('.dialog input.ovin[data-attr="64"]'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, ''); i.dispatchEvent(new Event('input', { bubbles: true })); });
+s = await waitNew(s);
+check('removing the override restores dps', Math.abs(s.offense?.total?.weapon_dps - wd0) < 1e-6, s.offense?.total?.weapon_dps);
 await clickText('.dialog button', 'Close');
 
 // manual fleet buff (shield harmonizing)

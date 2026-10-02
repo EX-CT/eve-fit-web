@@ -61,7 +61,12 @@ const stripTags = (s: string) => s.replace(/<[^>]+>/g, '');
 /** Where an info dialog was opened from: a fitted item gets its engine-computed ("fitted") attribute values. */
 export type InfoCtx = { module?: number; drone?: number; ship?: boolean; charge?: boolean };
 
-export function ItemInfo({ ds, id, onClose, fitted, fittedNote }: { ds: Dataset; id: number; onClose: () => void; fitted?: Record<string, number> | null; fittedNote?: string }) {
+export function ItemInfo({ ds, id, onClose, fitted, fittedNote, overrides, onOverride }: {
+  ds: Dataset; id: number; onClose: () => void; fitted?: Record<string, number> | null; fittedNote?: string;
+  /** attribute id -> overridden base value for this type in the active fit; onOverride(attr, null) removes it */
+  overrides?: Record<number, number>; onOverride?: (attr: number, value: number | null) => void;
+}) {
+  const [editOv, setEditOv] = useState(false);
   const t = ds.type(id);
   const [all, setAll] = useState(false);
   if (!t) return null;
@@ -93,14 +98,17 @@ export function ItemInfo({ ds, id, onClose, fitted, fittedNote }: { ds: Dataset;
         )}
         {req.length > 0 && <p><b>{tr('Required skills:')}</b> {req.map(([s, l]) => `${ds.name(s)} ${l}`).join(', ')}</p>}
         <label><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> show unpublished attributes</label>
+        {onOverride && <label> <input type="checkbox" className="editov" checked={editOv} onChange={(e) => setEditOv(e.target.checked)} /> edit attribute overrides (this fit){overrides && Object.keys(overrides).length ? ` · ${Object.keys(overrides).length} active` : ''}</label>}
         {fitted !== undefined && <p className="muted">{fitted ? 'Fitted values computed by the engine (changed values highlighted).' : fittedNote ?? 'computing fitted values…'}</p>}
         <table className="attrs">
-          {fitted && <thead><tr><th>attribute</th><th className="num">base</th><th className="num">fitted</th></tr></thead>}
+          {(fitted || editOv) && <thead><tr><th>attribute</th><th className="num">base</th>{fitted && <th className="num">fitted</th>}{editOv && <th>override</th>}</tr></thead>}
           <tbody>
           {attrs.map((x) => {
             const fmt = (v: number | undefined) => (v == null ? '—' : `${+v.toFixed(4)} ${unit(x.info?.unit)}`);
             const changed = fitted && x.f != null && (x.v == null || Math.abs(x.f - x.v) > 1e-9 * Math.max(1, Math.abs(x.v)));
-            return <tr key={x.a} className={changed ? 'changed' : ''}><td>{x.info?.display || x.info?.name || x.a}</td><td className="num">{fmt(x.v)}</td>{fitted && <td className="num">{fmt(x.f)}</td>}</tr>;
+            const ov = overrides?.[x.a];
+            return <tr key={x.a} className={(changed ? 'changed' : '') + (ov != null ? ' overridden' : '')}><td>{x.info?.display || x.info?.name || x.a}</td><td className="num">{fmt(x.v)}{ov != null && !editOv ? ` → ${+ov.toFixed(4)}` : ''}</td>{fitted && <td className="num">{fmt(x.f)}</td>}
+              {editOv && <td><input className="qty wide ovin" data-attr={x.a} type="number" value={ov ?? ''} placeholder="—" onChange={(e) => onOverride!(x.a, e.target.value === '' ? null : +e.target.value)} /></td>}</tr>;
           })}
         </tbody></table>
         <button onClick={onClose}>{tr('Close')}</button>

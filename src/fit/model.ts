@@ -22,6 +22,8 @@ export interface Fit {
   character_id: string; damage_pattern_id: string; target_profile_id: string;
   options: { factor_reload: boolean; spool: number; rah: 'adapt' | 'disable' };
   notes?: string;
+  /** Pyfa-style attribute overrides: base value of an attribute for every item of a type in this fit */
+  overrides?: { type_id: number; attribute_id: number; value: number }[];
 }
 export interface Character { id: string; name: string; default_level: number; levels: Record<string, number>; security_status?: number | null; builtin?: boolean }
 export interface DamagePattern { id: string; name: string; em: number; thermal: number; kinetic: number; explosive: number; builtin?: boolean }
@@ -85,7 +87,7 @@ export function toRequest(fit: Fit, lib: Library, depth = 0): Record<string, unk
       ? { em: tp.em, thermal: tp.thermal, kinetic: tp.kinetic, explosive: tp.explosive, signature_radius: tp.signature_radius ?? null,
           max_velocity: tp.max_velocity ?? null, radius: tp.radius ?? null }
       : null,
-    overrides: [],
+    overrides: fit.overrides ?? [],
     options: {
       factor_reload: fit.options.factor_reload, default_spool: { type: 'spool_scale', amount: fit.options.spool },
       rah: fit.options.rah, include_attributes: 'none', sources: false, validate: true,
