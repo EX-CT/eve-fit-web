@@ -14,7 +14,7 @@ header h1 { font-size: 16px; margin: 0; }
 .engine .status { color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px; }
 main { flex: 1; display: grid; grid-template-columns: 330px 1fr 380px; min-height: 0; }
 aside, .center { overflow: auto; padding: 8px; border-right: 1px solid var(--line); }
-aside.right { border-right: 0; }
+aside.right { border-right: 0; display: block; margin-left: 0; }
 footer { padding: 4px 10px; border-top: 1px solid var(--line); font-size: 11px; }
 .muted { color: var(--mut); } .hint { color: var(--mut); font-size: 11px; }
 .loading { padding: 40px; }
