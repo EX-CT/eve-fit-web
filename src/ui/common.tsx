@@ -31,8 +31,8 @@ export function Bar({ used, total, label }: { used: number; total: number; label
   const p = total > 0 ? Math.min(used / total, 1.5) : used > 0 ? 1.5 : 0;
   return (
     <div className={'bar' + (used > total + 1e-9 ? ' over' : '')} title={`${label}: ${fmt(used, 2)} / ${fmt(total, 2)}`}>
-      <span className="lbl">{label}</span>
       <span className="fill" style={{ width: `${Math.min(p, 1) * 100}%` }} />
+      <span className="lbl">{label}</span>
       <span className="val">{fmt(used, 1)} / {fmt(total, 1)}</span>
     </div>
   );

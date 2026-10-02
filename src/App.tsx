@@ -16,10 +16,10 @@ import { Tabs } from './ui/common';
 
 const DEMO_EFT = `[Rifter, Demo Rifter]
 Gyrostabilizer II
-Damage Control II
-Small Ancillary Armor Repairer, Nanite Repair Paste
+200mm Steel Plates II
+Small Armor Repairer II
 
-5MN Microwarpdrive II
+1MN Afterburner II
 Warp Scrambler II
 Stasis Webifier II
 
@@ -30,9 +30,7 @@ Stasis Webifier II
 
 Small Projectile Burst Aerator I
 Small Projectile Collision Accelerator I
-Small Projectile Burst Aerator I
-
-Warrior II x1
+[Empty Rig slot]
 `;
 
 export default function App() {
