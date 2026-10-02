@@ -1,6 +1,6 @@
 // EFT text and DNA (ship:mod;qty:...::) import/export, written from the public formats (no Pyfa code).
 import type { Dataset, Slot } from '../data/dataset';
-import { newFit, type Fit, type FitModule } from './model';
+import { newFit, type Fit, type FitModule, type Mutation } from './model';
 
 const SLOT_ORDER: Slot[] = ['low', 'mid', 'high', 'rig', 'subsystem', 'service'];
 const EMPTY_LABEL: Record<Slot, string> = { low: 'Low', mid: 'Med', high: 'High', rig: 'Rig', subsystem: 'Subsystem', service: 'Service' };
@@ -17,12 +17,36 @@ export function parseEft(ds: Dataset, text: string): ImportResult {
   const ship = ds.byExactName(m[1]);
   if (ship == null || !ds.isShip(ship)) throw new Error(`EFT: unknown ship "${m[1]}"`);
   const fit = newFit(ship, (m[2] ?? '').trim() || 'Imported fit');
-  for (const raw of lines.slice(head + 1)) {
+  // trailing mutation blocks: "[N] Base Name" / "  Mutaplasmid Name" / "  attrName value, attrName value"
+  const muts = new Map<number, Mutation>();
+  let firstMut = lines.length;
+  for (let i = head + 1; i < lines.length; i++) {
+    const h = /^\[(\d+)\]\s*(.+)$/.exec(lines[i]);
+    if (!h) continue;
+    firstMut = Math.min(firstMut, i);
+    const base = ds.byExactName(h[2]);
+    let muta: number | undefined; const attrs: Record<string, number> = {};
+    let j = i + 1;
+    for (; j < lines.length && !/^\[\d+\]/.test(lines[j]); j++) {
+      const l = lines[j];
+      if (!l) continue;
+      if (muta == null) { muta = ds.byExactName(l); if (muta == null) warnings.push(`unknown mutaplasmid "${l}"`); continue; }
+      for (const kv of l.split(',')) {
+        const mm = /^(\S+)\s+(-?[\d.eE+-]+)$/.exec(kv.trim());
+        const aid = mm ? ds.attrId(mm[1]) : undefined;
+        if (mm && aid != null) attrs[String(aid)] = +mm[2];
+      }
+    }
+    if (base == null) warnings.push(`unknown mutated base "${h[2]}"`);
+    else if (muta != null) muts.set(+h[1], { base_type_id: base, mutaplasmid_type_id: muta, attributes: attrs });
+    i = j - 1;
+  }
+  for (const raw of lines.slice(head + 1, firstMut)) {
     if (!raw || /^\[empty .* slot\]$/i.test(raw)) continue;
-    if (/^\[\d+\]/.test(raw)) { warnings.push(`mutated module details not supported yet: ${raw}`); continue; }
-    let line = raw, offline = false;
+    let line = raw, offline = false, mref: number | null = null;
+    const mr = /\s*\[(\d+)\]$/.exec(line);
+    if (mr) { mref = +mr[1]; line = line.slice(0, mr.index); }
     if (/\/offline$/i.test(line)) { offline = true; line = line.replace(/\s*\/offline$/i, ''); }
-    line = line.replace(/\s*\[\d+\]$/, '');
     const qm = /^(.*?)\s+x(\d+)$/.exec(line);
     if (qm) {
       const id = ds.byExactName(qm[1]);
@@ -45,7 +69,17 @@ export function parseEft(ds: Dataset, text: string): ImportResult {
     if (!slot) { warnings.push(`"${modName}" is not a fittable module`); continue; }
     let charge: number | null = null;
     if (chargeName) { charge = ds.byExactName(chargeName) ?? null; if (charge == null) warnings.push(`unknown charge "${chargeName}"`); }
-    fit.modules.push({ type_id: id, slot, state: offline ? 'offline' : defaultState(ds, id), charge_type_id: charge });
+    let tid = id, mutation: Mutation | null = null;
+    if (mref != null) {
+      const mu = muts.get(mref);
+      if (!mu) warnings.push(`mutation [${mref}] not defined`);
+      else {
+        const out = ds.mutaplasmidsFor(mu.base_type_id).find((x) => x.muta === mu.mutaplasmid_type_id)?.output;
+        if (out == null) warnings.push(`${ds.name(mu.mutaplasmid_type_id, 'en')} does not apply to ${modName}`);
+        else { tid = out; mutation = mu; }
+      }
+    }
+    fit.modules.push({ type_id: tid, slot, state: offline ? 'offline' : defaultState(ds, tid), charge_type_id: charge, mutation });
   }
   return { fit, warnings };
 }
@@ -60,14 +94,16 @@ export function defaultState(ds: Dataset, id: number): FitModule['state'] {
 
 export function exportEft(ds: Dataset, fit: Fit, slotTotals?: Partial<Record<Slot, number>>): string {
   const out: string[] = [`[${ds.name(fit.ship_type_id, 'en')}, ${fit.name}]`];
+  const mutated: Mutation[] = [];
   for (const s of SLOT_ORDER) {
     const mods = fit.modules.filter((m) => m.slot === s);
     const total = Math.max(slotTotals?.[s] ?? 0, mods.length);
     if (total === 0) continue;
     for (const m of mods) {
-      let l = ds.name(m.type_id, 'en');
+      let l = ds.name(m.mutation ? m.mutation.base_type_id : m.type_id, 'en');
       if (m.charge_type_id) l += `, ${ds.name(m.charge_type_id, 'en')}`;
       if (m.state === 'offline') l += ' /OFFLINE';
+      if (m.mutation) { mutated.push(m.mutation); l += ` [${mutated.length}]`; }
       out.push(l);
     }
     for (let i = mods.length; i < total; i++) out.push(`[Empty ${EMPTY_LABEL[s]} slot]`);
@@ -78,6 +114,14 @@ export function exportEft(ds: Dataset, fit: Fit, slotTotals?: Partial<Record<Slo
   section(fit.fighters.map((f) => `${ds.name(f.type_id, 'en')} x${f.quantity}`));
   section([...fit.implants.map((i) => ds.name(i, 'en')), ...fit.boosters.map((b) => ds.name(b.type_id, 'en'))]);
   section(fit.cargo.map((c) => `${ds.name(c.type_id, 'en')} x${c.quantity}`));
+  if (mutated.length) {
+    out.push('');
+    mutated.forEach((mu, i) => {
+      const attrs = Object.entries(mu.attributes).map(([a, v]) => [ds.raw.attributes[a]?.name ?? a, v] as const).sort((x, y) => x[0].localeCompare(y[0]));
+      out.push(`[${i + 1}] ${ds.name(mu.base_type_id, 'en')}`, `  ${ds.name(mu.mutaplasmid_type_id, 'en')}`, '  ' + attrs.map(([n, v]) => `${n} ${Number(v.toPrecision(7))}`).join(', '));
+      if (i < mutated.length - 1) out.push('');
+    });
+  }
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }
 

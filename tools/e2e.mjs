@@ -13,7 +13,7 @@ Damage Control II
 
 10MN Afterburner II
 Warp Disruptor II
-Cap Recharger II
+Stasis Webifier II [1]
 Omnidirectional Tracking Link II
 
 Drone Link Augmentor II
@@ -30,6 +30,10 @@ Hobgoblin II x5
 
 Inherent Implants 'Noble' Repair Proficiency RP-905
 Improved Crash Booster
+
+[1] Stasis Webifier II
+  Unstable Stasis Webifier Mutaplasmid
+  capacitorNeed 6, cpu 22.5, maxRange 12000, speedFactor -58
 `;
 const CARRIER = `[Thanatos, E2E Thanatos]
 
@@ -56,6 +60,7 @@ check('EFT import via ?eft=, ship', s.ship?.name === 'Vexor', s.ship?.name);
 check('drones dps', s.offense?.total?.drone_dps > 0, s.offense?.total?.drone_dps);
 check('weapon dps (charges)', s.offense?.total?.weapon_dps > 0, s.offense?.total?.weapon_dps);
 check('armor tank', s.defense?.tank?.raw?.armor_repair > 0, s.defense?.tank?.raw?.armor_repair);
+check('mutated module imported', await p.evaluate(() => document.body.textContent.includes('Abyssal Stasis Webifier')));
 check('no violations', (s.violations ?? []).length === 0, JSON.stringify(s.violations));
 
 // projected web from the market
@@ -104,6 +109,7 @@ await clickText('header button', 'Import / export');
 await clickText('.dialog button', 'Export EFT');
 const eft = await p.evaluate(() => document.querySelector('textarea.eft').value);
 check('EFT export', eft.startsWith('[Vexor, E2E Vexor]') && eft.includes('Hammerhead II x5'), eft.split('\n')[0]);
+check('mutated module EFT round trip', eft.includes('Stasis Webifier II [1]') && eft.includes('[1] Stasis Webifier II\n  Unstable Stasis Webifier Mutaplasmid\n') && eft.includes('maxRange 12000'), eft.split('\n').slice(-3).join(' / '));
 await clickText('.dialog button', 'Export DNA');
 const dna = await p.evaluate(() => document.querySelector('textarea.eft').value);
 check('DNA export', /^626:/.test(dna) && dna.endsWith('::'), dna);
