@@ -29,6 +29,14 @@ Hammerhead II x5
 Hobgoblin II x5
 
 Inherent Implants 'Noble' Repair Proficiency RP-905
+Improved Crash Booster
+`;
+const CARRIER = `[Thanatos, E2E Thanatos]
+
+Fighter Support Unit II
+
+Einherji II x9
+Firbolg II x9
 `;
 const b = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
 const p = await b.newPage();
@@ -75,6 +83,22 @@ for (const g of ['dps', 'cap', 'regen', 'mobility', 'lock', 'warp']) {
   check(`graph ${g}`, n > 0, n);
 }
 
+// booster side effect toggle (armor HP penalty)
+await clickText('.center .tabs button', 'Fit');
+await clickText('.tabs button', 'Fitting');
+const a0 = s.defense?.hp?.armor;
+const toggled = await p.evaluate(() => { const l = [...document.querySelectorAll('.subopts label')].find((x) => x.textContent.includes('Armor Hp')); if (!l) return false; l.querySelector('input').click(); return true; });
+s = await waitNew(s);
+check('booster side effect lowers armor HP', toggled && s.defense?.hp?.armor < a0, `${a0} -> ${s.defense?.hp?.armor}`);
+
+// manual fleet buff (shield harmonizing)
+await clickText('.tabs button', 'Projected');
+const sr0 = s.defense?.resonance?.shield?.em;
+const buffId = await p.evaluate(() => [...document.querySelector('select.buffsel').options].find((o) => o.text === 'Shield Burst: Shield Harmonizing: Shield Resistance')?.value);
+await p.select('select.buffsel', buffId);
+s = await waitNew(s);
+check('manual fleet buff raises shield resist (lower resonance)', s.defense?.resonance?.shield?.em < sr0, `${sr0} -> ${s.defense?.resonance?.shield?.em}`);
+
 // export EFT round trip
 await clickText('header button', 'Import / export');
 await clickText('.dialog button', 'Export EFT');
@@ -97,6 +121,18 @@ await chSel.select(cid);
 s = await waitNew(s);
 check('custom character (all 0) lowers dps', s.offense.total.dps.total < d5, `${d5} -> ${s.offense.total.dps.total}`);
 check('missing skills reported', (s.violations ?? []).some((v) => v.code === 'MISSING_SKILL'));
+// fighters: abilities
+await p.goto(`${url}?engine=${engine}&eft=${encodeURIComponent(CARRIER)}`, { waitUntil: 'networkidle0', timeout: 120000 });
+await p.waitForFunction(() => window.__lastStats?.ship?.name === 'Thanatos', { timeout: 120000 });
+s = await stats();
+const f0 = s.offense?.total?.fighter_dps ?? s.offense?.total?.drone_dps;
+check('fighter dps', f0 > 0, f0);
+const ab = await p.evaluate(() => [...document.querySelectorAll('.subopts label')].filter((l) => l.querySelector('input.ability')).map((l) => l.textContent.trim() + (l.querySelector('input').checked ? '*' : '')));
+check('fighter abilities listed', ab.length >= 4, ab.join(', '));
+await p.evaluate(() => { const l = [...document.querySelectorAll('.subopts label')].find((x) => x.querySelector('input.ability')?.checked && x.textContent.includes('Attack')); l.querySelector('input').click(); });
+s = await waitNew(s);
+const f1 = s.offense?.total?.fighter_dps ?? s.offense?.total?.drone_dps;
+check('disabling an attack ability lowers fighter dps', f1 < f0, `${f0} -> ${f1}`);
 check('no page errors', errors.length === 0, errors.join(' | '));
 
 await b.close();

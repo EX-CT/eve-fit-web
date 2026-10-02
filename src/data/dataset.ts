@@ -20,7 +20,8 @@ export interface RawDataset {
   groups: Record<string, { name: string; category: number }>;
   categories: Record<string, { name: string }>;
   attributes: Record<string, AttrRow>;
-  effects: Record<string, { name: string; category: number }>;
+  effects: Record<string, { name: string; category: number; fitting_usage_chance_attr?: number | null }>;
+  dbuffs?: Record<string, { name: string; aggregate?: string }>;
   market_groups?: Record<string, MarketGroup>;
   meta_groups?: Record<string, { name: string }>;
   units?: Record<string, { name: string; display?: string }>;
@@ -129,6 +130,39 @@ export class Dataset {
   hasEffect(id: number, effectName: string): boolean {
     const t = this.raw.types[id];
     return !!t?.effects.some(([e]) => this.raw.effects[e]?.name === effectName);
+  }
+
+  /** Warfare buffs usable as manual fleet buffs (id, name), excluding prototype/test rows. */
+  warfareBuffs(): [number, string][] {
+    return Object.entries(this.raw.dbuffs ?? {}).filter(([, b]) => b.name && !b.name.startsWith('[')).map(([k, b]) => [+k, b.name] as [number, string]).sort((a, b) => a[1].localeCompare(b[1]));
+  }
+  /** Fighter ability effects of a fighter type, with Pyfa's default on/off state (mirrors eve-dogma-rs). */
+  fighterAbilities(id: number): { effect: number; name: string; default: boolean }[] {
+    const t = this.raw.types[id];
+    if (!t) return [];
+    const ids = t.effects.map(([e]) => e).sort((a, b) => a - b);
+    const out: { effect: number; name: string; default: boolean }[] = [];
+    let stdSeen = false;
+    for (const e of ids) {
+      const n = this.raw.effects[e]?.name;
+      if (!n || !n.startsWith('fighterAbility')) continue;
+      let def = false;
+      if (n === 'fighterAbilityAttackM') { def = true; stdSeen = true; }
+      else if (!stdSeen && !['fighterAbilityMicroWarpDrive', 'fighterAbilityEvasiveManeuvers', 'fighterAbilityMicroJumpDrive'].includes(n)) def = true;
+      out.push({ effect: e, name: n.replace(/^fighterAbility/, '').replace(/([a-z])([A-Z])/g, '$1 $2'), default: def });
+    }
+    return out;
+  }
+  /** Booster side effects (effects with a fitting-usage chance attribute): effect id, readable name, chance. */
+  boosterSideEffects(id: number): { effect: number; name: string; chance: number | undefined }[] {
+    const t = this.raw.types[id];
+    if (!t) return [];
+    return t.effects.flatMap(([e]) => {
+      const ef = this.raw.effects[e];
+      if (!ef?.fitting_usage_chance_attr) return [];
+      const name = ef.name.replace(/^booster/, '').replace(/Penalty.*$/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
+      return [{ effect: e, name: name + ' penalty', chance: t.attrs[ef.fitting_usage_chance_attr] }];
+    });
   }
 
   kind(id: number): Kind {

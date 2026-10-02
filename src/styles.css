@@ -68,3 +68,4 @@ svg.chart { width: 100%; background: var(--panel); border: 1px solid var(--line)
 svg.chart text { fill: var(--mut); font-size: 10px; } svg.chart .grid { stroke: #2a333d; } svg.chart .axis { fill: var(--fg); font-size: 11px; }
 tr.sel { background: #1f3a4a; }
 @media (max-width: 1100px) { main { grid-template-columns: 1fr; } aside, .center { border-right: 0; border-bottom: 1px solid var(--line); max-height: none; } }
+.subopts { width: 100%; display: flex; flex-wrap: wrap; gap: 4px 12px; padding-left: 16px; font-size: 11px; color: #9aa7b3; }

@@ -15,14 +15,14 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
   - Module states: offline, online, active, overheated (click for the next state, right-click for the previous).
   - Charges and ammo, filtered by charge group, size and capacity.
   - Mutaplasmids: choose one and set each rolled attribute with a slider.
-  - Drones (quantity and number active), fighters (squadron size, launched or not), implants and boosters (each slot holds one), cargo.
+  - Drones (quantity and number active), fighters (squadron size, launched or not, per-ability toggles with Pyfa's defaults), implants and boosters (each slot holds one; booster side effects can be switched on one at a time), cargo.
   - T3D modes, fit notes.
 - **Character and skills.** Built-in All 5, All 4 and All 0 characters, plus custom characters with a default level and per-skill levels. Shows which skills the fit requires and which are missing, with a "train required" button. Pilot security status.
 - **Damage patterns and target profiles.** Built-in presets, including NPC factions, plus custom ones. Damage patterns feed EHP and RAH adaptation; target profiles feed DPS vs target and the graphs.
 - **Projected, fleet and environment.**
   - Projected modules, drones and fighters, each with an amount and a distance.
   - Projected saved fits.
-  - Fleet booster fits (command bursts).
+  - Fleet booster fits (command bursts) and manual warfare buffs (any buff ID with a value).
   - System effects and beacons (wormhole, abyssal, Triglavian, incursion, faction warfare, metaliminal storms), and system security.
 - **Full stats panel:**
   - resources (CPU, powergrid, calibration, drone bandwidth and bay, fighter bay and tubes, cargo, hardpoints)
@@ -60,13 +60,14 @@ gh release download -R EX-CT/eve-sde-pipeline -p 'dataset-*.json.gz' -O public/d
 # engine D: (in eve-dogma-lab@variant-d/variant-d) npm ci && npm run build:web; copy dist-web/eve-dogma-ts.mjs to public/engines/d/
 npm run dev
 node tools/smoke.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker   # headless check
+node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-end (23 checks); engine arg may be 'http&http=http://127.0.0.1:8787'
 ```
 
 ## Deployment
 `.github/workflows/pages.yml` runs on push, by hand, and every 6 h:
 1. Download the latest `eve-sde-pipeline` release dataset.
 2. Build engine D and engine F (WASM).
-3. Build the site and run a headless Chrome smoke test (the demo fit must compute).
+3. Build the site and run a headless Chrome smoke test (the demo fit must compute), then the UI end-to-end test (`tools/e2e.mjs`: EFT import, projected web, beacon, graphs, booster side effect, fleet buff, EFT/DNA export, custom character, fighter abilities) on the TS and WASM backends.
 4. Deploy to GitHub Pages.
 
 ## Licence

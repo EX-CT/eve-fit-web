@@ -97,10 +97,24 @@ function Bays(p: FitProps) {
         <div className="mod" key={i}><span className="mname" onClick={() => onInfo(f.type_id)}>{ds.name(f.type_id)}</span>
           <span>squadron <Qty value={f.quantity} min={1} onChange={(v) => onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, quantity: v } : x)) })} /></span>
           <label><input type="checkbox" checked={f.active} onChange={(e) => onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, active: e.target.checked } : x)) })} /> launched</label>
-          <button className="mini" onClick={() => rm('fighters', i)}>✕</button></div>))}</div>}
+          <button className="mini" onClick={() => rm('fighters', i)}>✕</button>
+          <div className="subopts">{ds.fighterAbilities(f.type_id).map((a, _k, all) => {
+            const on = f.abilities ? f.abilities.includes(a.effect) : a.default;
+            const toggle = () => {
+              const cur = f.abilities ?? all.filter((x) => x.default).map((x) => x.effect);
+              const next = on ? cur.filter((x) => x !== a.effect) : [...cur, a.effect];
+              onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, abilities: next } : x)) });
+            };
+            return <label key={a.effect} title={'effect ' + a.effect}><input type="checkbox" className="ability" checked={on} onChange={toggle} /> {a.name}</label>;
+          })}</div></div>))}</div>}
       {(fit.implants.length > 0 || fit.boosters.length > 0) && <div className="bay"><h4>Implants &amp; boosters</h4>
         {fit.implants.map((t, i) => <div className="mod" key={'i' + i}><span className="mname" onClick={() => onInfo(t)}>{ds.name(t)}</span><span className="muted">slot {ds.attr(t, 'implantness') ?? '?'}</span><button className="mini" onClick={() => rm('implants', i)}>✕</button></div>)}
-        {fit.boosters.map((b, i) => <div className="mod" key={'b' + i}><span className="mname" onClick={() => onInfo(b.type_id)}>{ds.name(b.type_id)}</span><span className="muted">booster slot {ds.attr(b.type_id, 'boosterness') ?? '?'}</span><button className="mini" onClick={() => rm('boosters', i)}>✕</button></div>)}
+        {fit.boosters.map((b, i) => <div className="mod" key={'b' + i}><span className="mname" onClick={() => onInfo(b.type_id)}>{ds.name(b.type_id)}</span><span className="muted">booster slot {ds.attr(b.type_id, 'boosterness') ?? '?'}</span><button className="mini" onClick={() => rm('boosters', i)}>✕</button>
+          <div className="subopts">{ds.boosterSideEffects(b.type_id).map((se) => {
+            const on = (b.side_effects ?? []).includes(se.effect);
+            const toggle = () => onChange({ ...fit, boosters: fit.boosters.map((x, j) => (j === i ? { ...x, side_effects: on ? (x.side_effects ?? []).filter((e) => e !== se.effect) : [...(x.side_effects ?? []), se.effect] } : x)) });
+            return <label key={se.effect}><input type="checkbox" className="sidefx" checked={on} onChange={toggle} /> {se.name}{se.chance != null ? ` (${Math.round(se.chance * 100)}%)` : ''}</label>;
+          })}</div></div>)}
       </div>}
       {fit.cargo.length > 0 && <div className="bay"><h4>Cargo</h4>{fit.cargo.map((c, i) => (
         <div className="mod" key={i}><span className="mname" onClick={() => onInfo(c.type_id)}>{ds.name(c.type_id)}</span>
@@ -142,6 +156,18 @@ function Projected(p: FitProps & { addProjected: boolean; setAddProjected: (b: b
       <div className="row">
         <select value={bf} onChange={(e) => setBf(e.target.value)}><option value="">add booster fit…</option>{others.map((f) => <option key={f.id} value={f.id}>{f.name} ({ds.name(f.ship_type_id)})</option>)}</select>
         <button disabled={!bf} onClick={() => { onChange({ ...fit, fleet: { ...fit.fleet, booster_fit_ids: [...new Set([...fit.fleet.booster_fit_ids, bf])] } }); setBf(''); }}>Add booster</button>
+      </div>
+      <h4>Manual fleet buffs</h4>
+      {fit.fleet.buffs.map((b, i) => (
+        <div className="mod" key={'fb' + i}><span className="mname">{ds.warfareBuffs().find(([k]) => k === b.buff_id)?.[1] ?? `buff ${b.buff_id}`}</span>
+          <input className="qty wide" type="number" step={1} value={b.value} onChange={(e) => onChange({ ...fit, fleet: { ...fit.fleet, buffs: fit.fleet.buffs.map((x, j) => (j === i ? { ...x, value: +e.target.value } : x)) } })} />
+          <button className="mini" onClick={() => onChange({ ...fit, fleet: { ...fit.fleet, buffs: fit.fleet.buffs.filter((_, j) => j !== i) } })}>✕</button></div>
+      ))}
+      <div className="row">
+        <select className="buffsel" value="" onChange={(e) => e.target.value && onChange({ ...fit, fleet: { ...fit.fleet, buffs: [...fit.fleet.buffs, { buff_id: +e.target.value, value: -10 }] } })}>
+          <option value="">add a warfare buff (value as in-game %, e.g. -10)…</option>
+          {ds.warfareBuffs().map(([k, n]) => <option key={k} value={k}>{n}</option>)}
+        </select>
       </div>
       <h4>Environment</h4>
       <div className="row">
