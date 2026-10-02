@@ -62,6 +62,16 @@ check('weapon dps (charges)', s.offense?.total?.weapon_dps > 0, s.offense?.total
 check('armor tank', s.defense?.tank?.raw?.armor_repair > 0, s.defense?.tank?.raw?.armor_repair);
 check('mutated module imported', await p.evaluate(() => document.body.textContent.includes('Abyssal Stasis Webifier')));
 check('no violations', (s.violations ?? []).length === 0, JSON.stringify(s.violations));
+// Chinese mode: weapon names in the stats table come from the dataset (zh), not the engine's English strings
+const langSel = async (l) => p.evaluate((v) => { const sel = [...document.querySelectorAll('header select')].find((x) => [...x.options].some((o) => o.value === 'zh')); sel.value = v; sel.dispatchEvent(new Event('change', { bubbles: true })); }, l);
+await langSel('zh');
+await new Promise((r) => setTimeout(r, 300));
+const zhW = await p.evaluate(() => [...document.querySelectorAll('.stats td.wname')].map((x) => x.textContent));
+check('zh weapon names', zhW.length > 0 && zhW.every((n) => /[\u4e00-\u9fff]/.test(n) && !n.includes('Heavy Neutron')), zhW.join(' | '));
+await langSel('en');
+await new Promise((r) => setTimeout(r, 300));
+const enW = await p.evaluate(() => [...document.querySelectorAll('.stats td.wname')].map((x) => x.textContent));
+check('en weapon names restored', enW.some((n) => n.startsWith('Heavy Neutron Blaster II')), enW.join(' | '));
 
 // projected web from the market
 const v0 = s.navigation.max_velocity;

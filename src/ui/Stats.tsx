@@ -1,11 +1,24 @@
 import type { FitStats } from '../engine/adapter';
 import { t as tr } from '../i18n';
+import type { Dataset } from '../data/dataset';
+import type { Fit } from '../fit/model';
 import { Bar, Section, fmt, pctFmt } from './common';
 
 const DT = ['em', 'thermal', 'kinetic', 'explosive'] as const;
 const DT_SHORT: Record<string, string> = { em: 'EM', thermal: 'Th', kinetic: 'Ki', explosive: 'Ex' };
 
-export function Stats({ st, busy, ms, error }: { st: FitStats | null; busy: boolean; ms: number | null; error: string | null }) {
+/** Localised weapon label: the engines report English type names; map type_id (or the fit module at module_index) to the
+ *  dataset name in the current language, plus the loaded charge. Falls back to the engine string. */
+export function weaponName(w: any, ds?: Dataset | null, fit?: Fit | null): string {
+  if (!ds) return w.name ?? '';
+  const m = fit && Number.isInteger(w.module_index) ? fit.modules[w.module_index] : undefined;
+  const tid = w.type_id ?? m?.type_id;
+  const base = tid != null && ds.raw.types?.[tid] ? ds.name(tid) : (w.name ?? '');
+  const ch = w.charge_type_id ?? m?.charge_type_id;
+  return ch && ds.raw.types?.[ch] ? `${base} · ${ds.name(ch)}` : base;
+}
+
+export function Stats({ st, busy, ms, error, ds, fit }: { st: FitStats | null; busy: boolean; ms: number | null; error: string | null; ds?: Dataset | null; fit?: Fit | null }) {
   if (error) return <div className="stats"><div className="error">Engine error: {error}</div></div>;
   if (!st) return <div className="stats muted">{busy ? 'calculating…' : 'no stats yet'}</div>;
   if (st.error) return <div className="stats"><div className="error">{st.error.code}: {st.error.message} {st.error.path}</div></div>;
@@ -39,9 +52,9 @@ export function Stats({ st, busy, ms, error }: { st: FitStats | null; busy: bool
         </tbody></table>
         <div className="kv">{DT.map((k) => <span key={k} className={'dt-' + k}>{DT_SHORT[k]} {fmt(o.total?.dps?.[k])}</span>)}</div>
         {(o.weapons ?? []).length > 0 && (
-          <table className="grid small"><thead><tr><th>weapon</th><th>dps</th><th>range</th><th>cycle s</th></tr></thead><tbody>
+          <table className="grid small"><thead><tr><th>{tr('Weapon')}</th><th>dps</th><th>{tr('Range')}</th><th>{tr('Cycle s')}</th></tr></thead><tbody>
             {o.weapons.map((w: any, i: number) => (
-              <tr key={i}><td>{w.name}</td><td className="num">{fmt(w.dps?.total)}</td>
+              <tr key={i}><td className="wname">{weaponName(w, ds, fit)}</td><td className="num">{fmt(w.dps?.total)}</td>
                 <td className="num">{w.kind === 'missile' ? `${fmt((w.range_m ?? 0) / 1000)} km` : w.optimal_m != null ? `${fmt(w.optimal_m / 1000)}+${fmt((w.falloff_m ?? 0) / 1000)} km` : '—'}</td>
                 <td className="num">{fmt((w.cycle_time_ms ?? 0) / 1000, 2)}</td></tr>
             ))}

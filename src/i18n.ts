@@ -12,7 +12,7 @@ const ZH: Record<string, string> = {
   'Import (EFT / DNA / ESI JSON)': '导入 (EFT / DNA / ESI JSON)', 'Export EFT': '导出 EFT', 'Export DNA': '导出 DNA',
   'Export ESI JSON': '导出 ESI JSON', 'Export multibuy': '导出批量购买', 'Share link': '分享链接', Close: '关闭',
   'Show info': '显示信息', 'Role bonus:': '特有加成：', 'Misc:': '其他：', 'Required skills:': '所需技能：',
-  'Engine warnings': '引擎警告', Resources: '资源', Offense: '输出', Volley: '齐射', Weapons: '武器', Drones: '无人机',
+  'Engine warnings': '引擎警告', Resources: '资源', Offense: '输出', Volley: '齐射', Weapons: '武器', Weapon: '武器', Range: '射程', 'Cycle s': '周期 (秒)', Drones: '无人机',
   Fighters: '铁骑舰载机', Total: '合计', Defense: '防御', Capacitor: '电容', Navigation: '航行', Targeting: '锁定',
   'Remote assistance': '远程支援', Mining: '采矿', Mutaplasmid: '突变质体', Remove: '移除',
   'Implants & boosters': '植入体和增效剂', Cargo: '货柜舱', 'Projected onto this fit': '投射到此配置',
