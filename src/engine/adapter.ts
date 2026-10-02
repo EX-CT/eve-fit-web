@@ -60,7 +60,7 @@ class HttpEngine implements Engine {
       if (r.ok) { const m = await r.json(); return `${m.engine ?? 'HTTP engine'} · SDE ${m.sde_build ?? '?'} @ ${this.base}`; }
     } catch { /* fall through: try a calc-only server */ }
     const r = await fetch(`${this.base}/healthz`).catch(() => null);
-    if (!r || !r.ok) throw new Error(`no engine at ${this.base} (GET /v1/meta failed; is CORS enabled?)`);
+    if (!r || !r.ok) throw new Error(`no engine at ${this.base}: GET /v1/meta failed. Is it running with CORS (tools/engine-bridge.mjs)? From the hosted site, allow the browser's local-network permission prompt.`);
     return `HTTP engine @ ${this.base}`;
   }
   async calc(request: unknown) {

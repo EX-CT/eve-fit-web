@@ -5,7 +5,7 @@ import puppeteer from 'puppeteer-core';
 const url = process.argv[2] ?? 'http://127.0.0.1:4173/eve-fit-web/';
 const engine = process.argv[3];
 const target = engine ? `${url}${url.includes('?') ? '&' : '?'}engine=${engine}` : url;
-const browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', ...(process.env.SMOKE_ALLOW_LOCAL ? ['--disable-features=LocalNetworkAccessChecks,PrivateNetworkAccessRespectPreflightResults'] : [])] });
 const page = await browser.newPage();
 const logs = [];
 page.on('console', (m) => logs.push(`[${m.type()}] ${m.text()}`));
