@@ -5,6 +5,7 @@ import type { Dataset, Slot } from '../data/dataset';
 import type { Fit, FitModule, Library, ModState } from '../fit/model';
 import type { FitStats } from '../engine/adapter';
 import { Tabs } from './common';
+import { applyImplantSet, saveUserImplantSets, useSdePresets, userImplantSets, type ImplantSet } from '../data/sdePresets';
 
 const SLOTS: [Slot, string][] = [['high', 'High slots'], ['mid', 'Mid slots'], ['low', 'Low slots'], ['rig', 'Rigs'], ['subsystem', 'Subsystems'], ['service', 'Services']];
 const STATES: ModState[] = ['offline', 'online', 'active', 'overheated'];
@@ -91,6 +92,42 @@ function Qty({ value, onChange, min = 0, max = 999 }: { value: number; onChange:
   return <input className="qty" type="number" min={min} max={max} value={value} onChange={(e) => onChange(Math.max(min, Math.min(max, +e.target.value || 0)))} />;
 }
 
+/** Implant sets: SDE sets (eve-sde-pipeline presets) and user-saved sets; applying one replaces the implants in its slots. */
+function ImplantSets({ ds, fit, onChange }: FitProps) {
+  const sde = useSdePresets();
+  const [user, setUser] = useState<ImplantSet[]>(userImplantSets);
+  const slotOf = (id: number) => ds.attr(id, 'implantness') ?? undefined;
+  const label = (s: ImplantSet) => {
+    if (s.user || ds.lang !== 'zh') return s.name + (s.complete || s.user ? '' : ` (${s.members.length}/6)`);
+    const zh = ds.name(s.members[0].type_id).replace(/\s*[-—–]\s*\S+型$/, '');
+    return zh + (s.complete ? '' : ` (${s.members.length}/6)`);
+  };
+  const all = [...user, ...sde.implant_sets];
+  const apply = (id: string) => { const s = all.find((x) => x.id === id); if (s) onChange({ ...fit, implants: applyImplantSet(fit.implants, s, slotOf) }); };
+  const save = () => {
+    if (!fit.implants.length) return;
+    const name = prompt(t('Name for this implant set'), 'My implants');
+    if (!name) return;
+    const set: ImplantSet = { id: 'user:' + Math.random().toString(36).slice(2, 8), name, grade: null, complete: true, user: true,
+      members: fit.implants.map((id) => ({ type_id: id, slot: slotOf(id) ?? 0 })) };
+    const next = [...user, set]; setUser(next); saveUserImplantSets(next);
+  };
+  const delUser = (id: string) => { const next = user.filter((x) => x.id !== id); setUser(next); saveUserImplantSets(next); };
+  if (!all.length && !fit.implants.length) return null;
+  return (
+    <div className="implantsets">
+      <select className="implantset" value="" onChange={(e) => e.target.value && apply(e.target.value)} title={t('Implant set')}>
+        <option value="">{t('Implant set…')}</option>
+        {user.length > 0 && <optgroup label={t('Saved sets')}>{user.map((s) => <option key={s.id} value={s.id}>{label(s)}</option>)}</optgroup>}
+        {sde.implant_sets.length > 0 && <optgroup label={t('Pirate / faction sets (SDE)')}>{sde.implant_sets.map((s) => <option key={s.id} value={s.id}>{label(s)}</option>)}</optgroup>}
+      </select>
+      {fit.implants.length > 0 && <button className="mini saveset" onClick={save}>{t('Save implants as set')}</button>}
+      {user.length > 0 && <select className="delset" value="" onChange={(e) => e.target.value && delUser(e.target.value)} title={t('Delete saved set')}>
+        <option value="">{t('Delete saved set…')}</option>{user.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
+    </div>
+  );
+}
+
 function Bays(p: FitProps) {
   const { ds, fit, onChange, onInfo } = p;
   const rm = <K extends 'drones' | 'fighters' | 'implants' | 'boosters' | 'cargo'>(k: K, i: number) => onChange({ ...fit, [k]: (fit[k] as unknown[]).filter((_, j) => j !== i) });
@@ -115,6 +152,7 @@ function Bays(p: FitProps) {
             };
             return <label key={a.effect} title={'effect ' + a.effect}><input type="checkbox" className="ability" checked={on} onChange={toggle} /> {a.name}</label>;
           })}</div></div>))}</div>}
+      <ImplantSets {...p} />
       {(fit.implants.length > 0 || fit.boosters.length > 0) && <div className="bay"><h4>{t('Implants & boosters')}</h4>
         {fit.implants.map((t, i) => <div className="mod" key={'i' + i}><span className="mname" onClick={() => onInfo(t)}>{ds.name(t)}</span><span className="muted">slot {ds.attr(t, 'implantness') ?? '?'}</span><button className="mini" onClick={() => rm('implants', i)}>✕</button></div>)}
         {fit.boosters.map((b, i) => <div className="mod" key={'b' + i}><span className="mname" onClick={() => onInfo(b.type_id)}>{ds.name(b.type_id)}</span><span className="muted">booster slot {ds.attr(b.type_id, 'boosterness') ?? '?'}</span><button className="mini" onClick={() => rm('boosters', i)}>✕</button>

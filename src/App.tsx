@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { loadSdePresets } from './data/sdePresets';
 import { setUiLang, t } from './i18n';
 import { Dataset } from './data/dataset';
 import { createEngine, type Engine, type FitStats } from './engine/adapter';
@@ -57,6 +58,10 @@ export default function App() {
   const [showIO, setShowIO] = useState(false);
   const [build, setBuild] = useState<{ dataset_tag?: string; engine_d?: string; engine_f?: string; web?: string; built_at?: string; run?: string } | null>(null);
   useEffect(() => { fetch(`${import.meta.env.BASE_URL}build-info.json`).then((r) => (r.ok ? r.json() : null)).then(setBuild, () => {}); }, []);
+  // SDE-derived NPC damage / target profiles (eve-sde-pipeline presets.json) join the built-in profiles (not persisted).
+  useEffect(() => { loadSdePresets().then((p) => update((s) => ({ ...s, lib: { ...s.lib,
+    damagePatterns: { ...s.lib.damagePatterns, ...Object.fromEntries(p.damage.map((d) => [d.id, d])) },
+    targetProfiles: { ...s.lib.targetProfiles, ...Object.fromEntries(p.targets.map((t) => [t.id, t])) } } }))); }, [update]);
   const [addProjected, setAddProjected] = useState(false);
   const { lib, settings } = state;
   const fit = settings.activeFitId ? lib.fits[settings.activeFitId] ?? null : null;

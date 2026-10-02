@@ -157,6 +157,27 @@ let ej = null; try { ej = JSON.parse(esi); } catch {}
 check('ESI JSON export', ej?.ship_type_id === 626 && ej.items.some((i) => i.flag === 'HiSlot0') && ej.items.some((i) => i.flag === 'DroneBay'), ej ? ej.items.length + ' items' : esi.slice(0, 80));
 if (await p.$('.dialog')) await clickText('.dialog button', 'Close');
 
+// implant sets (SDE presets): applying High-grade Snake fills slots 1-6, keeps the slot-7+ implant, raises velocity
+await clickText('.center .tabs button', 'Fit');
+await clickText('.center .tabs button', 'Fitting');
+s = await stats();
+const hasSets = await p.evaluate(() => !!document.querySelector('select.implantset option[value="snake.high-grade"]'));
+if (hasSets) {
+  const v0s = s.navigation?.max_velocity;
+  await p.select('select.implantset', 'snake.high-grade');
+  s = await waitNew(s);
+  const imps = await p.evaluate(() => [...document.querySelectorAll('.bay .mod .mname')].map((x) => x.textContent).filter((n) => /Snake|RP-905/.test(n)));
+  check('implant set applied (6 Snake + kept RP-905, faster)', imps.filter((n) => n.includes('High-grade Snake')).length === 6 && imps.some((n) => n.includes('RP-905')) && s.navigation?.max_velocity > v0s, `${imps.length} implants; ${v0s} -> ${s.navigation?.max_velocity} m/s`);
+} else check('implant set applied (6 Snake + kept RP-905, faster)', false, 'no SDE implant sets loaded');
+// SDE NPC damage profile in the Profiles tab changes EHP
+await clickText('.left .tabs button', 'Profiles');
+await p.evaluate(() => document.querySelector('.sdetoggle input')?.click());
+const ehp0 = s.defense?.ehp?.total;
+const picked = await p.evaluate(() => { const tr = [...document.querySelectorAll('.profiles tr')].find((r) => r.textContent.includes('[NPC] Guristas Pirates')); tr?.querySelector('input[type=radio]')?.click(); return !!tr; });
+if (picked) s = await waitNew(s);
+check('SDE NPC damage profile (Guristas) changes EHP', picked && s.defense?.ehp?.total !== ehp0, `${ehp0} -> ${s.defense?.ehp?.total}`);
+await p.evaluate(() => { const tr = [...document.querySelectorAll('.profiles tr')].find((r) => r.textContent.trim().startsWith('Uniform')); tr?.querySelector('input[type=radio]')?.click(); });
+s = await waitNew(s);
 // character: clone All 5 and drop to level 0 -> less dps
 const d5 = s.offense.total.dps.total;
 await clickText('.left .tabs button', 'Character');

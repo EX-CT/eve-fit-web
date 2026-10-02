@@ -1,14 +1,20 @@
 import { uid, type DamagePattern, type Fit, type Library, type TargetProfile } from '../fit/model';
+import { useState } from 'react';
 import { t } from '../i18n';
 
 const DT = ['em', 'thermal', 'kinetic', 'explosive'] as const;
 
 export function Profiles({ lib, fit, onLib, onFit }: { lib: Library; fit: Fit | null; onLib: (l: Library) => void; onFit: (f: Fit) => void }) {
-  const dps = Object.values(lib.damagePatterns), tps = Object.values(lib.targetProfiles);
+  const [showSde, setShowSde] = useState(false);
+  // SDE-derived NPC profiles (ids 'sde:…', from eve-sde-pipeline presets.json) are hidden unless toggled on or selected.
+  const vis = (id: string, sel?: string) => showSde || !id.startsWith('sde:') || id === sel;
+  const dps = Object.values(lib.damagePatterns).filter((d) => vis(d.id, fit?.damage_pattern_id)), tps = Object.values(lib.targetProfiles).filter((x) => vis(x.id, fit?.target_profile_id));
+  const nSde = Object.keys(lib.damagePatterns).filter((k) => k.startsWith('sde:')).length + Object.keys(lib.targetProfiles).filter((k) => k.startsWith('sde:')).length;
   const saveD = (d: DamagePattern) => onLib({ ...lib, damagePatterns: { ...lib.damagePatterns, [d.id]: d } });
   const saveT = (t: TargetProfile) => onLib({ ...lib, targetProfiles: { ...lib.targetProfiles, [t.id]: t } });
   return (
     <div className="profiles">
+      {nSde > 0 && <label className="sdetoggle"><input type="checkbox" checked={showSde} onChange={(e) => setShowSde(e.target.checked)} /> {t('Show NPC profiles from the SDE')} ({nSde})</label>}
       <h4>{t('Damage patterns (incoming damage, for EHP / RAH)')}</h4>
       <table className="grid small"><thead><tr><th></th><th>name</th>{DT.map((k) => <th key={k}>{k}</th>)}<th></th></tr></thead><tbody>
         {dps.map((d) => (
