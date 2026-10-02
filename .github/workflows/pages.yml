@@ -1,0 +1,83 @@
+name: pages
+# Builds the web UI with the latest EX-CT/eve-sde-pipeline dataset release and the in-browser engines
+# (variant D TypeScript bundle, variant F Rust->WASM), smoke-tests it in headless Chrome, deploys to GitHub Pages.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dataset_tag:
+        description: "eve-sde-pipeline release tag (default: latest)"
+        required: false
+        default: ""
+  schedule:
+    - cron: "40 */6 * * *"   # pick up new SDE releases / engine updates
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm }
+      - run: npm ci
+      - name: Dataset from the SDE pipeline release
+        run: |
+          TAG="${{ github.event.inputs.dataset_tag }}"
+          [ -z "$TAG" ] && TAG=$(gh release view -R EX-CT/eve-sde-pipeline --json tagName --jq .tagName)
+          mkdir -p public/data dl
+          gh release download "$TAG" -R EX-CT/eve-sde-pipeline -D dl -p 'dataset-*.json.gz' -p manifest.json -p LICENSE.EVE
+          cp dl/dataset-*.json.gz public/data/dataset.json.gz; cp dl/manifest.json public/data/manifest.json; cp dl/LICENSE.EVE public/data/
+          echo "DATASET_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "dataset: $TAG ($(ls dl/dataset-*))" >> "$GITHUB_STEP_SUMMARY"
+      - name: Engine D (TypeScript, browser bundle)
+        run: |
+          git clone -q --depth 1 -b variant-d https://github.com/EX-CT/eve-dogma-lab lab-d
+          (cd lab-d/variant-d && npm ci --no-audit --no-fund && npm run build:web)
+          mkdir -p public/engines/d
+          cp lab-d/variant-d/dist-web/eve-dogma-ts.mjs public/engines/d/
+          cp lab-d/variant-d/LICENSE public/engines/d/LICENSE 2>/dev/null || cp lab-d/LICENSE public/engines/d/LICENSE 2>/dev/null || true
+          echo "ENGINE_D=$(git -C lab-d rev-parse --short HEAD)" >> "$GITHUB_ENV"
+      - name: Engine F (Rust -> WASM, dataset compiled in)
+        continue-on-error: true
+        run: |
+          git clone -q --depth 1 -b variant-f https://github.com/EX-CT/eve-dogma-lab lab-f
+          rustup target add wasm32-unknown-unknown
+          (cd lab-f/variant-f && EVE_DOGMA_DATASET="$GITHUB_WORKSPACE/public/data/dataset.json.gz" cargo build --lib --profile release-small --target wasm32-unknown-unknown)
+          mkdir -p public/engines/f
+          cp lab-f/variant-f/target/wasm32-unknown-unknown/release-small/eve_dogma_f.wasm public/engines/f/
+          echo "ENGINE_F=$(git -C lab-f rev-parse --short HEAD)" >> "$GITHUB_ENV"
+      - name: Build info
+        run: |
+          printf '{"dataset_tag":"%s","engine_d":"%s","engine_f":"%s","web":"%s","built_at":"%s","run":"%s"}\n' \
+            "$DATASET_TAG" "${ENGINE_D:-}" "${ENGINE_F:-}" "${GITHUB_SHA::7}" "$(date -u +%FT%TZ)" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > public/build-info.json
+          cat public/build-info.json
+      - run: npm run build
+      - name: Smoke test (headless Chrome computes the demo fit)
+        run: |
+          npx vite preview --port 4173 --strictPort &
+          sleep 3
+          node tools/smoke.mjs http://127.0.0.1:4173/eve-fit-web/ ts-worker | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ -f public/engines/f/eve_dogma_f.wasm ]; then node tools/smoke.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "wasm backend smoke failed" >> "$GITHUB_STEP_SUMMARY"; fi
+        env: { CHROME: /usr/bin/google-chrome }
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: dist }
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.d.outputs.page_url }}
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v4
