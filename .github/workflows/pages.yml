@@ -65,11 +65,11 @@ jobs:
       - run: npm run build
       - name: Smoke test (headless Chrome computes the demo fit)
         run: |
-          npx vite preview --port 4173 --strictPort &
-          sleep 3
+          set -o pipefail
+          npx vite preview --host 127.0.0.1 --port 4173 --strictPort &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:4173/eve-fit-web/ && break; sleep 1; done
           node tools/smoke.mjs http://127.0.0.1:4173/eve-fit-web/ ts-worker | tee -a "$GITHUB_STEP_SUMMARY"
           if [ -f public/engines/f/eve_dogma_f.wasm ]; then node tools/smoke.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "wasm backend smoke failed" >> "$GITHUB_STEP_SUMMARY"; fi
-          set -o pipefail
           node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ ts-worker | tee -a "$GITHUB_STEP_SUMMARY"
           if [ -f public/engines/f/eve_dogma_f.wasm ]; then node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "wasm backend e2e failed" >> "$GITHUB_STEP_SUMMARY"; fi
         env: { CHROME: /usr/bin/google-chrome }
