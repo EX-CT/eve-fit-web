@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from '../i18n';
 import type { Dataset } from '../data/dataset';
 import type { FitStats } from '../engine/adapter';
 import type { TargetProfile } from '../fit/model';
@@ -15,7 +16,7 @@ export function Graphs({ ds, st, target }: { ds: Dataset; st: FitStats | null; t
   const [k, setK] = useState<K>('dps');
   const [sig, setSig] = useState(target?.signature_radius ?? 125);
   const [vel, setVel] = useState(target?.max_velocity ?? 0);
-  if (!st || st.error) return <div className="muted">Compute a fit first.</div>;
+  if (!st || st.error) return <div className="muted">{t('Compute a fit first.')}</div>;
   const tgt = sig > 0 ? { signature_radius: sig, velocity: vel } : null;
   const graph = (() => {
     switch (k) {

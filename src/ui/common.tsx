@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { t } from '../i18n';
 
 export const fmt = (v: number | null | undefined, d = 1): string => {
   if (v == null || !Number.isFinite(v)) return '—';
@@ -44,7 +45,7 @@ const COLORS = ['#4fc3f7', '#ffb74d', '#81c784', '#e57373', '#ba68c8', '#fff176'
 export function LineChart({ series, xLabel, yLabel, height = 260 }: { series: ChartSeries[]; xLabel: string; yLabel: string; height?: number }) {
   const W = 640, H = height, L = 56, B = 34, R = 12, T = 10;
   const all = series.flatMap((s) => s.points);
-  if (!all.length) return <div className="muted">No data for this graph.</div>;
+  if (!all.length) return <div className="muted">{t('No data for this graph.')}</div>;
   const xmax = Math.max(...all.map((p) => p[0])) || 1, xmin = Math.min(0, ...all.map((p) => p[0]));
   const ymax = Math.max(...all.map((p) => p[1]).filter(Number.isFinite)) * 1.05 || 1;
   const sx = (x: number) => L + ((x - xmin) / (xmax - xmin)) * (W - L - R);

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { t } from '../i18n';
 import type { Dataset } from '../data/dataset';
 import { uid, type Character, type Fit, type Library } from '../fit/model';
 
@@ -36,8 +37,8 @@ export function CharacterEditor({ ds, lib, fit, onLib }: { ds: Dataset; lib: Lib
     <div className="character">
       <div className="row">
         <select value={ch.id} onChange={(e) => setSel(e.target.value)}>{Object.values(lib.characters).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-        <button onClick={clone}>Clone</button>
-        {!ch.builtin && <button onClick={() => { const { [ch.id]: _drop, ...rest } = lib.characters; void _drop; onLib({ ...lib, characters: rest }); setSel('all5'); }}>Delete</button>}
+        <button onClick={clone}>{t('Clone')}</button>
+        {!ch.builtin && <button onClick={() => { const { [ch.id]: _drop, ...rest } = lib.characters; void _drop; onLib({ ...lib, characters: rest }); setSel('all5'); }}>{t('Delete')}</button>}
       </div>
       {ch.builtin ? <p className="muted">Built-in characters are read-only: clone to customise.</p> : (
         <div className="row">
@@ -49,7 +50,7 @@ export function CharacterEditor({ ds, lib, fit, onLib }: { ds: Dataset; lib: Lib
       {fit && (
         <div className={missing.length ? 'warnbox' : 'okbox'}>
           {missing.length ? <>Missing for this fit ({missing.length}): {missing.map(([s, l]) => `${ds.name(s)} ${l} (have ${level(s)})`).join(', ')}
-            {!ch.builtin && <button onClick={() => save({ ...ch, levels: { ...ch.levels, ...Object.fromEntries(missing) } })}>Train required</button>}</> : <>All {req.size} required skills trained.</>}
+            {!ch.builtin && <button onClick={() => save({ ...ch, levels: { ...ch.levels, ...Object.fromEntries(missing) } })}>{t('Train required')}</button>}</> : <>All {req.size} required skills trained.</>}
         </div>
       )}
       <input className="search" placeholder="filter skills…" value={q} onChange={(e) => setQ(e.target.value)} />

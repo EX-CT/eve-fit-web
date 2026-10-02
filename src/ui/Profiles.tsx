@@ -1,4 +1,5 @@
 import { uid, type DamagePattern, type Fit, type Library, type TargetProfile } from '../fit/model';
+import { t } from '../i18n';
 
 const DT = ['em', 'thermal', 'kinetic', 'explosive'] as const;
 
@@ -8,7 +9,7 @@ export function Profiles({ lib, fit, onLib, onFit }: { lib: Library; fit: Fit | 
   const saveT = (t: TargetProfile) => onLib({ ...lib, targetProfiles: { ...lib.targetProfiles, [t.id]: t } });
   return (
     <div className="profiles">
-      <h4>Damage patterns (incoming damage, for EHP / RAH)</h4>
+      <h4>{t('Damage patterns (incoming damage, for EHP / RAH)')}</h4>
       <table className="grid small"><thead><tr><th></th><th>name</th>{DT.map((k) => <th key={k}>{k}</th>)}<th></th></tr></thead><tbody>
         {dps.map((d) => (
           <tr key={d.id} className={fit?.damage_pattern_id === d.id ? 'sel' : ''}>
@@ -20,7 +21,7 @@ export function Profiles({ lib, fit, onLib, onFit }: { lib: Library; fit: Fit | 
         ))}
       </tbody></table>
       <button onClick={() => saveD({ id: uid(), name: 'Custom pattern', em: 25, thermal: 25, kinetic: 25, explosive: 25 })}>+ damage pattern</button>
-      <h4>Target profiles (outgoing DPS, graphs)</h4>
+      <h4>{t('Target profiles (outgoing DPS, graphs)')}</h4>
       <table className="grid small"><thead><tr><th></th><th>name</th>{DT.map((k) => <th key={k}>{k} res</th>)}<th>sig m</th><th>speed</th><th></th></tr></thead><tbody>
         {tps.map((t) => (
           <tr key={t.id}>

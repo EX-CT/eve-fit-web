@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from '../i18n';
 import type { InfoCtx } from './Market';
 import type { Dataset, Slot } from '../data/dataset';
 import type { Fit, FitModule, Library, ModState } from '../fit/model';
@@ -52,9 +53,9 @@ function ModuleRow({ ds, m, idx, fit, stats, onChange, onInfo }: { ds: Dataset; 
           {[0, 0.25, 0.5, 0.75, 1].map((v) => <option key={v} value={v}>spool {v * 100}%</option>)}
         </select>
       )}
-      {mutas.length > 0 && <button className="mini" onClick={() => setShowMuta(!showMuta)} title="Mutaplasmid">✦</button>}
+      {mutas.length > 0 && <button className="mini" onClick={() => setShowMuta(!showMuta)} title={t('Mutaplasmid')}>✦</button>}
       <span className="mstat">{wpn ? `${wpn.dps?.total?.toFixed(1)} dps` : modStats?.cap_use_gj_s ? `${modStats.cap_use_gj_s.toFixed(2)} GJ/s` : ''}</span>
-      <button className="mini" onClick={remove} title="Remove">✕</button>
+      <button className="mini" onClick={remove} title={t('Remove')}>✕</button>
       {showMuta && (
         <div className="muta">
           <select value={m.mutation?.mutaplasmid_type_id ?? ''} onChange={(e) => {
@@ -95,12 +96,12 @@ function Bays(p: FitProps) {
   const rm = <K extends 'drones' | 'fighters' | 'implants' | 'boosters' | 'cargo'>(k: K, i: number) => onChange({ ...fit, [k]: (fit[k] as unknown[]).filter((_, j) => j !== i) });
   return (
     <>
-      {fit.drones.length > 0 && <div className="bay"><h4>Drones</h4>{fit.drones.map((d, i) => (
+      {fit.drones.length > 0 && <div className="bay"><h4>{t('Drones')}</h4>{fit.drones.map((d, i) => (
         <div className="mod" key={i}><span className="mname" onClick={() => onInfo(d.type_id, { drone: i })}>{ds.name(d.type_id)}</span>
           <span>qty <Qty value={d.quantity} min={1} onChange={(v) => onChange({ ...fit, drones: fit.drones.map((x, j) => (j === i ? { ...x, quantity: v, active: Math.min(x.active, v) } : x)) })} /></span>
           <span>active <Qty value={d.active} max={d.quantity} onChange={(v) => onChange({ ...fit, drones: fit.drones.map((x, j) => (j === i ? { ...x, active: v } : x)) })} /></span>
           <button className="mini" onClick={() => rm('drones', i)}>✕</button></div>))}</div>}
-      {fit.fighters.length > 0 && <div className="bay"><h4>Fighters</h4>{fit.fighters.map((f, i) => (
+      {fit.fighters.length > 0 && <div className="bay"><h4>{t('Fighters')}</h4>{fit.fighters.map((f, i) => (
         <div className="mod" key={i}><span className="mname" onClick={() => onInfo(f.type_id)}>{ds.name(f.type_id)}</span>
           <span>squadron <Qty value={f.quantity} min={1} onChange={(v) => onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, quantity: v } : x)) })} /></span>
           <label><input type="checkbox" checked={f.active} onChange={(e) => onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, active: e.target.checked } : x)) })} /> launched</label>
@@ -114,7 +115,7 @@ function Bays(p: FitProps) {
             };
             return <label key={a.effect} title={'effect ' + a.effect}><input type="checkbox" className="ability" checked={on} onChange={toggle} /> {a.name}</label>;
           })}</div></div>))}</div>}
-      {(fit.implants.length > 0 || fit.boosters.length > 0) && <div className="bay"><h4>Implants &amp; boosters</h4>
+      {(fit.implants.length > 0 || fit.boosters.length > 0) && <div className="bay"><h4>{t('Implants & boosters')}</h4>
         {fit.implants.map((t, i) => <div className="mod" key={'i' + i}><span className="mname" onClick={() => onInfo(t)}>{ds.name(t)}</span><span className="muted">slot {ds.attr(t, 'implantness') ?? '?'}</span><button className="mini" onClick={() => rm('implants', i)}>✕</button></div>)}
         {fit.boosters.map((b, i) => <div className="mod" key={'b' + i}><span className="mname" onClick={() => onInfo(b.type_id)}>{ds.name(b.type_id)}</span><span className="muted">booster slot {ds.attr(b.type_id, 'boosterness') ?? '?'}</span><button className="mini" onClick={() => rm('boosters', i)}>✕</button>
           <div className="subopts">{ds.boosterSideEffects(b.type_id).map((se) => {
@@ -123,7 +124,7 @@ function Bays(p: FitProps) {
             return <label key={se.effect}><input type="checkbox" className="sidefx" checked={on} onChange={toggle} /> {se.name}{se.chance != null ? ` (${Math.round(se.chance * 100)}%)` : ''}</label>;
           })}</div></div>)}
       </div>}
-      {fit.cargo.length > 0 && <div className="bay"><h4>Cargo</h4>{fit.cargo.map((c, i) => (
+      {fit.cargo.length > 0 && <div className="bay"><h4>{t('Cargo')}</h4>{fit.cargo.map((c, i) => (
         <div className="mod" key={i}><span className="mname" onClick={() => onInfo(c.type_id)}>{ds.name(c.type_id)}</span>
           <span>x <Qty value={c.quantity} min={1} max={1e6} onChange={(v) => onChange({ ...fit, cargo: fit.cargo.map((x, j) => (j === i ? { ...x, quantity: v } : x)) })} /></span>
           <button className="mini" onClick={() => rm('cargo', i)}>✕</button></div>))}</div>}
@@ -141,7 +142,7 @@ function Projected(p: FitProps & { addProjected: boolean; setAddProjected: (b: b
   return (
     <div>
       <label className="toggle"><input type="checkbox" checked={p.addProjected} onChange={(e) => p.setAddProjected(e.target.checked)} /> add items from the market as <b>projected onto this fit</b></label>
-      <h4>Projected onto this fit</h4>
+      <h4>{t('Projected onto this fit')}</h4>
       {fit.projected.length === 0 && <p className="muted">Nothing projected. Turn on the toggle above and pick webs, paints, neuts, remote reps, drones… or project a saved fit.</p>}
       {fit.projected.map((x, i) => (
         <div className="mod" key={i}>
@@ -153,18 +154,18 @@ function Projected(p: FitProps & { addProjected: boolean; setAddProjected: (b: b
       ))}
       <div className="row">
         <select value={pf} onChange={(e) => setPf(e.target.value)}><option value="">project a saved fit…</option>{others.map((f) => <option key={f.id} value={f.id}>{f.name} ({ds.name(f.ship_type_id)})</option>)}</select>
-        <button disabled={!pf} onClick={() => { onChange({ ...fit, projected: [...fit.projected, { kind: 'fit', fit_id: pf, amount: 1, distance_m: 10000 }] }); setPf(''); }}>Project fit</button>
+        <button disabled={!pf} onClick={() => { onChange({ ...fit, projected: [...fit.projected, { kind: 'fit', fit_id: pf, amount: 1, distance_m: 10000 }] }); setPf(''); }}>{t('Project fit')}</button>
       </div>
-      <h4>Fleet boosters (command bursts)</h4>
+      <h4>{t('Fleet boosters (command bursts)')}</h4>
       {fit.fleet.booster_fit_ids.map((id) => (
         <div className="mod" key={id}><span className="mname">{lib.fits[id]?.name ?? '(deleted)'}</span>
           <button className="mini" onClick={() => onChange({ ...fit, fleet: { ...fit.fleet, booster_fit_ids: fit.fleet.booster_fit_ids.filter((x) => x !== id) } })}>✕</button></div>
       ))}
       <div className="row">
         <select value={bf} onChange={(e) => setBf(e.target.value)}><option value="">add booster fit…</option>{others.map((f) => <option key={f.id} value={f.id}>{f.name} ({ds.name(f.ship_type_id)})</option>)}</select>
-        <button disabled={!bf} onClick={() => { onChange({ ...fit, fleet: { ...fit.fleet, booster_fit_ids: [...new Set([...fit.fleet.booster_fit_ids, bf])] } }); setBf(''); }}>Add booster</button>
+        <button disabled={!bf} onClick={() => { onChange({ ...fit, fleet: { ...fit.fleet, booster_fit_ids: [...new Set([...fit.fleet.booster_fit_ids, bf])] } }); setBf(''); }}>{t('Add booster')}</button>
       </div>
-      <h4>Manual fleet buffs</h4>
+      <h4>{t('Manual fleet buffs')}</h4>
       {fit.fleet.buffs.map((b, i) => (
         <div className="mod" key={'fb' + i}><span className="mname">{ds.warfareBuffs().find(([k]) => k === b.buff_id)?.[1] ?? `buff ${b.buff_id}`}</span>
           <input className="qty wide" type="number" step={1} value={b.value} onChange={(e) => onChange({ ...fit, fleet: { ...fit.fleet, buffs: fit.fleet.buffs.map((x, j) => (j === i ? { ...x, value: +e.target.value } : x)) } })} />
@@ -176,7 +177,7 @@ function Projected(p: FitProps & { addProjected: boolean; setAddProjected: (b: b
           {ds.warfareBuffs().map(([k, n]) => <option key={k} value={k}>{n}</option>)}
         </select>
       </div>
-      <h4>Environment</h4>
+      <h4>{t('Environment')}</h4>
       <div className="row">
         <select value="" onChange={(e) => e.target.value && onChange({ ...fit, environment: [...new Set([...fit.environment, +e.target.value])] })}>
           <option value="">add system effect / beacon…</option>
@@ -212,7 +213,7 @@ export function Fitting(p: FitProps & { addProjected: boolean; setAddProjected: 
           {Object.values(lib.characters).map((c) => <option key={c.id} value={c.id}>👤 {c.name}</option>)}
         </select>
       </div>
-      <Tabs tabs={[['fit', 'Fitting'], ['proj', `Projected / fleet / environment (${fit.projected.length + fit.fleet.booster_fit_ids.length + fit.environment.length})`], ['opts', 'Options']]} value={tab} onChange={setTab} />
+      <Tabs tabs={[['fit', t('Fitting')], ['proj', `${t('Projected / fleet / environment')} (${fit.projected.length + fit.fleet.booster_fit_ids.length + fit.environment.length})`], ['opts', t('Options')]]} value={tab} onChange={setTab} />
       {tab === 'fit' && (
         <>
           {SLOTS.map(([s, label]) => {
@@ -221,7 +222,7 @@ export function Fitting(p: FitProps & { addProjected: boolean; setAddProjected: 
             if (!total && !mods.length) return null;
             return (
               <div className="slotgroup" key={s}>
-                <h4>{label} <span className="muted">{mods.length}/{total}</span></h4>
+                <h4>{t(label)} <span className="muted">{mods.length}/{total}</span></h4>
                 {mods.map(([m, i]) => <ModuleRow key={i} {...p} m={m} idx={i} />)}
                 {Array.from({ length: Math.max(0, total - mods.length) }, (_, i) => <div key={'e' + i} className="mod empty">[empty {s} slot]</div>)}
               </div>

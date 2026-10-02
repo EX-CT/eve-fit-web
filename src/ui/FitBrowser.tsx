@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from '../i18n';
 import type { Dataset } from '../data/dataset';
 import type { Fit, Library } from '../fit/model';
 
@@ -30,7 +31,7 @@ export function FitBrowser({ ds, lib, activeId, onOpen, onDuplicate, onDelete, o
   }).catch((e) => setMsg(e.message));
   return (
     <div className="fitbrowser">
-      <input className="search" placeholder="search fits / ships…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <input className="search" placeholder={t('search fits / ships…')} value={q} onChange={(e) => setQ(e.target.value)} />
       {[...groups].sort((a, b) => a[0].localeCompare(b[0])).map(([g, fs]) => (
         <details key={g} open>
           <summary>{g} <span className="muted">({fs.length})</span></summary>
@@ -39,18 +40,18 @@ export function FitBrowser({ ds, lib, activeId, onOpen, onDuplicate, onDelete, o
               <li key={f.id} className={f.id === activeId ? 'on' : ''} onClick={() => onOpen(f.id)}>
                 <b>{ds.name(f.ship_type_id)}</b> {f.name}
                 <span className="right">
-                  <button className="mini" title="Duplicate" onClick={(e) => { e.stopPropagation(); onDuplicate(f); }}>⧉</button>
-                  <button className="mini" title="Delete" onClick={(e) => { e.stopPropagation(); if (confirm(`Delete fit "${f.name}"?`)) onDelete(f.id); }}>✕</button>
+                  <button className="mini" title={t('Duplicate')} onClick={(e) => { e.stopPropagation(); onDuplicate(f); }}>⧉</button>
+                  <button className="mini" title={t('Delete')} onClick={(e) => { e.stopPropagation(); if (confirm(`Delete fit "${f.name}"?`)) onDelete(f.id); }}>✕</button>
                 </span>
               </li>
             ))}
           </ul>
         </details>
       ))}
-      {fits.length === 0 && <p className="muted">{ql ? 'No fit matches.' : 'Pick a ship in the Market tab to start a new fit.'}</p>}
+      {fits.length === 0 && <p className="muted">{ql ? 'No fit matches.' : t('Pick a ship in the Market tab to start a new fit.')}</p>}
       <div className="row">
-        <button onClick={backup} title="Download all fits, characters and profiles as JSON">Backup library</button>
-        <label className="button">Restore… <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} /></label>
+        <button onClick={backup} title={t('Download all fits, characters and profiles as JSON')}>{t('Backup library')}</button>
+        <label className="button">{t('Restore… ')}<input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} /></label>
       </div>
       {msg && <p className="muted">{msg}</p>}
     </div>

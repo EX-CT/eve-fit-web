@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { setUiLang, t } from './i18n';
 import { Dataset } from './data/dataset';
 import { createEngine, type Engine, type FitStats } from './engine/adapter';
 import { defaultState, parseDna, parseEft } from './fit/formats';
@@ -208,20 +209,21 @@ export default function App() {
   if (!ds) return <div className="loading"><h1>EVE Fit Web</h1><p>{loadMsg}</p></div>;
   const setLang = (l: 'en' | 'zh') => { ds.lang = l; update((s) => ({ ...s, settings: { ...s.settings, lang: l } })); };
   ds.lang = settings.lang;
+  setUiLang(settings.lang);
   return (
     <div className="app">
       <header>
         <h1>EVE Fit Web</h1>
         <span className="muted">SDE {ds.build}{ds.raw.dataset_revision ? ` r${ds.raw.dataset_revision}` : ''}</span>
         <EngineSettings cfg={settings.engine} status={engineStatus} onChange={(c) => update((s) => ({ ...s, settings: { ...s.settings, engine: c } }))} />
-        <button className="undo" title="Undo (Ctrl+Z)" disabled={!(fit && hist.current[fit.id]?.past.length)} onClick={() => undoRedo('undo')}>↶ Undo</button>
-        <button className="redo" title="Redo (Ctrl+Y)" disabled={!(fit && hist.current[fit.id]?.future.length)} onClick={() => undoRedo('redo')}>↷ Redo</button>
-        <button onClick={() => setShowIO(true)}>Import / export</button>
+        <button className="undo" title={t('Undo (Ctrl+Z)')} disabled={!(fit && hist.current[fit.id]?.past.length)} onClick={() => undoRedo('undo')}>{t('↶ Undo')}</button>
+        <button className="redo" title={t('Redo (Ctrl+Y)')} disabled={!(fit && hist.current[fit.id]?.future.length)} onClick={() => undoRedo('redo')}>{t('↷ Redo')}</button>
+        <button onClick={() => setShowIO(true)}>{t('Import / export')}</button>
         <select value={settings.lang} onChange={(e) => setLang(e.target.value as 'en' | 'zh')}><option value="en">English</option><option value="zh">中文</option></select>
       </header>
       <main>
         <aside className="left">
-          <Tabs tabs={[['market', 'Market'], ['fits', `Fits (${Object.keys(lib.fits).length})`], ['char', 'Character'], ['profiles', 'Profiles']]} value={left} onChange={setLeft} />
+          <Tabs tabs={[['market', t('Market')], ['fits', `${t('Fits')} (${Object.keys(lib.fits).length})`], ['char', t('Character')], ['profiles', t('Profiles')]]} value={left} onChange={setLeft} />
           {left === 'market' && <Market ds={ds} onPick={pick} onInfo={setInfo} />}
           {left === 'fits' && <FitBrowser ds={ds} lib={lib} activeId={fit?.id ?? null}
             onOpen={(id) => update((s) => ({ ...s, settings: { ...s.settings, activeFitId: id } }))}
@@ -232,8 +234,8 @@ export default function App() {
           {left === 'profiles' && <Profiles lib={lib} fit={fit} onLib={setLib} onFit={setFit} />}
         </aside>
         <section className="center">
-          <Tabs tabs={[['fit', 'Fit'], ['graphs', 'Graphs']]} value={center} onChange={setCenter} />
-          {!fit ? <p className="muted">No fit selected.</p> : center === 'fit'
+          <Tabs tabs={[['fit', t('Fit')], ['graphs', t('Graphs')]]} value={center} onChange={setCenter} />
+          {!fit ? <p className="muted">{t('No fit selected.')}</p> : center === 'fit'
             ? <Fitting ds={ds} fit={fit} lib={lib} stats={stats} onChange={setFit} onInfo={setInfo} addProjected={addProjected} setAddProjected={setAddProjected} />
             : <Graphs ds={ds} st={stats} target={lib.targetProfiles[fit.target_profile_id]} />}
         </section>

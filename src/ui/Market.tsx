@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { t as tr } from '../i18n';
 import type { Dataset, Kind } from '../data/dataset';
 
 const KIND_FILTERS: [string, Kind[] | null][] = [
@@ -31,7 +32,7 @@ export function TypeRowView({ ds, id, onPick, onInfo, depth = 0 }: { ds: Dataset
       <span className={'kind k-' + ds.kind(id)}>{slot ?? ds.kind(id)}</span>
       <span className="tname" onClick={() => onPick(id)}>{ds.name(id)}</span>
       {ml ? <span className="meta">M{ml}</span> : null}
-      <button className="mini" onClick={(e) => { e.stopPropagation(); onInfo(id); }} title="Show info">i</button>
+      <button className="mini" onClick={(e) => { e.stopPropagation(); onInfo(id); }} title={tr('Show info')}>i</button>
     </li>
   );
 }
@@ -86,11 +87,11 @@ export function ItemInfo({ ds, id, onClose, fitted, fittedNote }: { ds: Dataset;
             {Object.entries(traits.skills ?? {}).map(([sk, bs]) => (
               <div key={sk}><b>{ds.name(+sk)} bonuses (per level):</b><ul>{bs.map((b, i) => <li key={i}>{bonus(b)}</li>)}</ul></div>
             ))}
-            {traits.role?.length ? <div><b>Role bonus:</b><ul>{traits.role.map((b, i) => <li key={i}>{bonus(b)}</li>)}</ul></div> : null}
-            {traits.misc?.length ? <div><b>Misc:</b><ul>{traits.misc.map((b, i) => <li key={i}>{bonus(b)}</li>)}</ul></div> : null}
+            {traits.role?.length ? <div><b>{tr('Role bonus:')}</b><ul>{traits.role.map((b, i) => <li key={i}>{bonus(b)}</li>)}</ul></div> : null}
+            {traits.misc?.length ? <div><b>{tr('Misc:')}</b><ul>{traits.misc.map((b, i) => <li key={i}>{bonus(b)}</li>)}</ul></div> : null}
           </div>
         )}
-        {req.length > 0 && <p><b>Required skills:</b> {req.map(([s, l]) => `${ds.name(s)} ${l}`).join(', ')}</p>}
+        {req.length > 0 && <p><b>{tr('Required skills:')}</b> {req.map(([s, l]) => `${ds.name(s)} ${l}`).join(', ')}</p>}
         <label><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> show unpublished attributes</label>
         {fitted !== undefined && <p className="muted">{fitted ? 'Fitted values computed by the engine (changed values highlighted).' : fittedNote ?? 'computing fitted values…'}</p>}
         <table className="attrs">
@@ -102,7 +103,7 @@ export function ItemInfo({ ds, id, onClose, fitted, fittedNote }: { ds: Dataset;
             return <tr key={x.a} className={changed ? 'changed' : ''}><td>{x.info?.display || x.info?.name || x.a}</td><td className="num">{fmt(x.v)}</td>{fitted && <td className="num">{fmt(x.f)}</td>}</tr>;
           })}
         </tbody></table>
-        <button onClick={onClose}>Close</button>
+        <button onClick={onClose}>{tr('Close')}</button>
       </div>
     </div>
   );

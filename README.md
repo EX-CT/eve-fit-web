@@ -6,7 +6,7 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
 
 **Live:** https://ex-ct.github.io/eve-fit-web/
 
-中文：基于无状态引擎契约的 EVE 配船网页（复现 Pyfa 界面功能）。引擎通过可切换的适配层调用，可在浏览器内运行（TypeScript / WASM），也可调用本地 HTTP 引擎。数据来自 eve-sde-pipeline 的 Release。界面支持中文物品名。
+中文：基于无状态引擎契约的 EVE 配船网页（复现 Pyfa 界面功能）。引擎通过可切换的适配层调用，可在浏览器内运行（TypeScript / WASM），也可调用本地 HTTP 引擎。数据来自 eve-sde-pipeline 的 Release。界面支持中文（物品名来自数据集，主要界面文字已翻译）。
 
 ## Features
 - **Market browser and search.** Browse the market-group tree from the dataset. Search names in English or Chinese, with kind filters. "Show info" lists attributes, ship bonus text (traits) and required skills; opened on a fitted module, drone or the ship it adds the engine-computed fitted values (changed values highlighted).
@@ -36,6 +36,7 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
 - **Graphs:** DPS vs range (turret hit chance, missile application, drones), capacitor vs time, regen vs fill %, speed and distance vs time, lock time vs signature, warp time vs distance.
 - **Import and export:** EFT text (including Pyfa-style mutated module blocks `[N] Base` / mutaplasmid / attribute values), DNA, ESI fitting JSON (import and export), multibuy list (export), and share links (`?dna=`, `?eft=`).
 - **Fit browser:** saved fits grouped by ship group, search, duplicate/delete, JSON backup and restore of the whole library (fits, characters, profiles). Pasting several EFT fits at once imports them all.
+- **Language:** English / 中文 switch for item names (dataset `names_i18n`) and the main UI labels.
 - **Options:** factor in reload, default spool-up, RAH adapt/unadapted. Fits, characters and profiles are stored in localStorage.
 
 ## Engine adapter (`src/engine/adapter.ts`)
