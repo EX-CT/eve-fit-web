@@ -174,8 +174,65 @@ export function exportDna(fit: Fit): string {
   return `${fit.ship_type_id}:` + [...counts].map(([k, q]) => `${k};${q}`).join(':') + '::';
 }
 
+// ---- ESI fitting JSON (as used by the in-game fitting API) ----
+const ESI_SLOT: Record<Slot, [string, number]> = { low: ['LoSlot', 11], mid: ['MedSlot', 19], high: ['HiSlot', 27], rig: ['RigSlot', 92], subsystem: ['SubSystemSlot', 125], service: ['ServiceSlot', 164] };
+
+export function exportEsi(_ds: Dataset, fit: Fit): string {
+  const items: { type_id: number; flag: string; quantity: number }[] = [];
+  const charges = new Map<number, number>();
+  for (const s of SLOT_ORDER) fit.modules.filter((m) => m.slot === s).forEach((m, i) => {
+    items.push({ type_id: m.type_id, flag: `${ESI_SLOT[s][0]}${i}`, quantity: 1 });
+    if (m.charge_type_id) charges.set(m.charge_type_id, (charges.get(m.charge_type_id) ?? 0) + 1);
+  });
+  for (const d of fit.drones) items.push({ type_id: d.type_id, flag: 'DroneBay', quantity: d.quantity });
+  for (const f of fit.fighters) items.push({ type_id: f.type_id, flag: 'FighterBay', quantity: f.quantity });
+  for (const c of fit.cargo) items.push({ type_id: c.type_id, flag: 'Cargo', quantity: c.quantity });
+  for (const [c, n] of charges) if (!fit.cargo.some((x) => x.type_id === c)) items.push({ type_id: c, flag: 'Cargo', quantity: n });
+  return JSON.stringify({ name: fit.name, description: fit.notes ?? '', ship_type_id: fit.ship_type_id, items }, null, 2);
+}
+
+export function parseEsi(ds: Dataset, text: string): ImportResult {
+  const j = JSON.parse(text) as { name?: string; description?: string; ship_type_id: number; items: { type_id: number; flag: string | number; quantity: number }[] };
+  if (!ds.isShip(j.ship_type_id)) throw new Error(`ESI: ${j.ship_type_id} is not a ship type`);
+  const fit = newFit(j.ship_type_id, j.name || `${ds.name(j.ship_type_id, 'en')} (ESI)`);
+  if (j.description) fit.notes = j.description;
+  const warnings: string[] = [];
+  const slotOf = (flag: string | number): Slot | null => {
+    for (const [s, [name, base]] of Object.entries(ESI_SLOT) as [Slot, [string, number]][]) {
+      if (typeof flag === 'string' ? flag.startsWith(name) : flag >= base && flag < base + 8) return s;
+    }
+    return null;
+  };
+  const sorted = [...j.items].sort((a, b) => String(a.flag).localeCompare(String(b.flag), undefined, { numeric: true }));
+  for (const it of sorted) {
+    if (!ds.type(it.type_id)) { warnings.push(`unknown type ${it.type_id}`); continue; }
+    const s = slotOf(it.flag);
+    const k = ds.kind(it.type_id);
+    if (s) fit.modules.push({ type_id: it.type_id, slot: s, state: defaultState(ds, it.type_id), charge_type_id: null });
+    else if (it.flag === 'DroneBay' || it.flag === 87 || k === 'drone') fit.drones.push({ type_id: it.type_id, quantity: it.quantity, active: it.quantity });
+    else if (it.flag === 'FighterBay' || it.flag === 158 || k === 'fighter') fit.fighters.push({ type_id: it.type_id, quantity: it.quantity, active: true });
+    else fit.cargo.push({ type_id: it.type_id, quantity: it.quantity });
+  }
+  return { fit, warnings };
+}
+
+// ---- multibuy (item list with totals, for the in-game multibuy window) ----
+export function exportMultibuy(ds: Dataset, fit: Fit): string {
+  const n = new Map<number, number>();
+  const add = (id: number | null | undefined, q = 1) => { if (id) n.set(id, (n.get(id) ?? 0) + q); };
+  add(fit.ship_type_id);
+  for (const m of fit.modules) { add(m.mutation ? m.mutation.base_type_id : m.type_id); if (m.mutation) add(m.mutation.mutaplasmid_type_id); add(m.charge_type_id); }
+  for (const d of fit.drones) add(d.type_id, d.quantity);
+  for (const f of fit.fighters) add(f.type_id, f.quantity);
+  for (const i of fit.implants) add(i);
+  for (const b of fit.boosters) add(b.type_id);
+  for (const c of fit.cargo) add(c.type_id, c.quantity);
+  return [...n].map(([id, q]) => `${ds.name(id, 'en')} x${q}`).join('\n') + '\n';
+}
+
 export function detectAndParse(ds: Dataset, text: string): ImportResult {
   const t = text.trim();
+  if (t.startsWith('{')) return parseEsi(ds, t);
   if (/^(fitting:)?\d+:/.test(t) || t.startsWith('<url=fitting:')) return parseDna(ds, t);
   return parseEft(ds, t);
 }

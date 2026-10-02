@@ -120,7 +120,14 @@ check('mutated module EFT round trip', eft.includes('Stasis Webifier II [1]') &&
 await clickText('.dialog button', 'Export DNA');
 const dna = await p.evaluate(() => document.querySelector('textarea.eft').value);
 check('DNA export', /^626:/.test(dna) && dna.endsWith('::'), dna);
-await clickText('.dialog button', 'Close');
+await clickText('.dialog button', 'Export multibuy');
+const mb = await p.evaluate(() => document.querySelector('textarea.eft').value);
+check('multibuy export', mb.startsWith('Vexor x1') && mb.includes('Hammerhead II x5') && mb.includes('Unstable Stasis Webifier Mutaplasmid x1'), mb.split('\n').length + ' lines');
+await clickText('.dialog button', 'Export ESI JSON');
+const esi = await p.evaluate(() => document.querySelector('textarea.eft').value);
+let ej = null; try { ej = JSON.parse(esi); } catch {}
+check('ESI JSON export', ej?.ship_type_id === 626 && ej.items.some((i) => i.flag === 'HiSlot0') && ej.items.some((i) => i.flag === 'DroneBay'), ej ? ej.items.length + ' items' : esi.slice(0, 80));
+if (await p.$('.dialog')) await clickText('.dialog button', 'Close');
 
 // character: clone All 5 and drop to level 0 -> less dps
 const d5 = s.offense.total.dps.total;
@@ -134,6 +141,15 @@ await chSel.select(cid);
 s = await waitNew(s);
 check('custom character (all 0) lowers dps', s.offense.total.dps.total < d5, `${d5} -> ${s.offense.total.dps.total}`);
 check('missing skills reported', (s.violations ?? []).some((v) => v.code === 'MISSING_SKILL'));
+// ESI JSON re-import (new fit)
+await clickText('header button', 'Import / export');
+await p.evaluate((t) => { const ta = document.querySelector('textarea.eft'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(ta, t); ta.dispatchEvent(new Event('input', { bubbles: true })); }, esi);
+await clickText('.dialog button', 'Import');
+await new Promise((r) => setTimeout(r, 500));
+await new Promise((r) => setTimeout(r, 1500));
+const imp = await p.evaluate(() => ({ open: !!document.querySelector('.dialog'), msg: document.querySelector('.dialog p.muted')?.textContent ?? '', ship: window.__lastStats?.ship?.name, mods: window.__lastStats?.modules?.length }));
+check('ESI JSON re-import', !imp.open && imp.ship === 'Vexor' && imp.mods === 15, imp.msg || `${imp.ship}, ${imp.mods} modules`);
+
 // fighters: abilities
 await p.goto(`${url}?engine=${engine}&eft=${encodeURIComponent(CARRIER)}`, { waitUntil: 'networkidle0', timeout: 120000 });
 await p.waitForFunction(() => window.__lastStats?.ship?.name === 'Thanatos', { timeout: 120000 });

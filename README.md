@@ -32,7 +32,7 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
   - navigation, targeting (lock times, jam chance), drones
   - violations and engine warnings
 - **Graphs:** DPS vs range (turret hit chance, missile application, drones), capacitor vs time, regen vs fill %, speed and distance vs time, lock time vs signature, warp time vs distance.
-- **Import and export:** EFT text (including Pyfa-style mutated module blocks `[N] Base` / mutaplasmid / attribute values), DNA, and share links (`?dna=`, `?eft=`).
+- **Import and export:** EFT text (including Pyfa-style mutated module blocks `[N] Base` / mutaplasmid / attribute values), DNA, ESI fitting JSON (import and export), multibuy list (export), and share links (`?dna=`, `?eft=`).
 - **Options:** factor in reload, default spool-up, RAH adapt/unadapted. Fits, characters and profiles are stored in localStorage.
 
 ## Engine adapter (`src/engine/adapter.ts`)
