@@ -10,6 +10,7 @@ import { Fitting } from './ui/Fitting';
 import { Graphs } from './ui/Graphs';
 import { ImportExport } from './ui/ImportExport';
 import { ItemInfo, Market, type InfoCtx } from './ui/Market';
+import { FitBrowser } from './ui/FitBrowser';
 import { Profiles } from './ui/Profiles';
 import { Stats } from './ui/Stats';
 import { Tabs } from './ui/common';
@@ -222,20 +223,11 @@ export default function App() {
         <aside className="left">
           <Tabs tabs={[['market', 'Market'], ['fits', `Fits (${Object.keys(lib.fits).length})`], ['char', 'Character'], ['profiles', 'Profiles']]} value={left} onChange={setLeft} />
           {left === 'market' && <Market ds={ds} onPick={pick} onInfo={setInfo} />}
-          {left === 'fits' && (
-            <ul className="fits">
-              {Object.values(lib.fits).sort((a, b) => ds.name(a.ship_type_id).localeCompare(ds.name(b.ship_type_id))).map((f) => (
-                <li key={f.id} className={f.id === fit?.id ? 'on' : ''} onClick={() => update((s) => ({ ...s, settings: { ...s.settings, activeFitId: f.id } }))}>
-                  <b>{ds.name(f.ship_type_id)}</b> {f.name}
-                  <span className="right">
-                    <button className="mini" title="Duplicate" onClick={(e) => { e.stopPropagation(); addFit({ ...structuredClone(f), id: uid(), name: f.name + ' (copy)' }); }}>⧉</button>
-                    <button className="mini" title="Delete" onClick={(e) => { e.stopPropagation(); const { [f.id]: _x, ...rest } = lib.fits; void _x; update((s) => ({ ...s, lib: { ...s.lib, fits: rest }, settings: { ...s.settings, activeFitId: s.settings.activeFitId === f.id ? null : s.settings.activeFitId } })); }}>✕</button>
-                  </span>
-                </li>
-              ))}
-              <li className="muted">Pick a ship in the Market tab to start a new fit.</li>
-            </ul>
-          )}
+          {left === 'fits' && <FitBrowser ds={ds} lib={lib} activeId={fit?.id ?? null}
+            onOpen={(id) => update((s) => ({ ...s, settings: { ...s.settings, activeFitId: id } }))}
+            onDuplicate={(f) => addFit({ ...structuredClone(f), id: uid(), name: f.name + ' (copy)' })}
+            onDelete={(id) => { const { [id]: _x, ...rest } = lib.fits; void _x; update((s) => ({ ...s, lib: { ...s.lib, fits: rest }, settings: { ...s.settings, activeFitId: s.settings.activeFitId === id ? null : s.settings.activeFitId } })); }}
+            onRestore={(l) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, ...l.fits }, characters: { ...s.lib.characters, ...l.characters }, damagePatterns: { ...s.lib.damagePatterns, ...l.damagePatterns }, targetProfiles: { ...s.lib.targetProfiles, ...l.targetProfiles } } }))} />}
           {left === 'char' && <CharacterEditor ds={ds} lib={lib} fit={fit} onLib={setLib} />}
           {left === 'profiles' && <Profiles lib={lib} fit={fit} onLib={setLib} onFit={setFit} />}
         </aside>

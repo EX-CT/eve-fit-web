@@ -167,6 +167,18 @@ await new Promise((r) => setTimeout(r, 1500));
 const imp = await p.evaluate(() => ({ open: !!document.querySelector('.dialog'), msg: document.querySelector('.dialog p.muted')?.textContent ?? '', ship: window.__lastStats?.ship?.name, mods: window.__lastStats?.modules?.length }));
 check('ESI JSON re-import', !imp.open && imp.ship === 'Vexor' && imp.mods === 15, imp.msg || `${imp.ship}, ${imp.mods} modules`);
 
+// multi-fit EFT paste + fit browser grouping
+await clickText('header button', 'Import / export');
+await p.evaluate((t) => { const ta = document.querySelector('textarea.eft'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(ta, t); ta.dispatchEvent(new Event('input', { bubbles: true })); }, '[Rifter, Multi A]\n200mm AutoCannon II\n\n[Merlin, Multi B]\nLight Neutron Blaster II\n');
+await clickText('.dialog button', 'Import');
+await new Promise((r) => setTimeout(r, 800));
+await clickText('.left .tabs button', 'Fits');
+const fb = await p.evaluate(() => ({ groups: [...document.querySelectorAll('.fitbrowser summary')].map((x) => x.textContent), names: [...document.querySelectorAll('.fitbrowser li')].map((x) => x.textContent) }));
+check('multi-fit EFT import + fit browser groups', fb.names.some((n) => n.includes('Multi A')) && fb.names.some((n) => n.includes('Multi B')) && fb.groups.some((g) => g.startsWith('Frigate')), fb.groups.join(', '));
+await p.type('.fitbrowser .search', 'Merlin');
+const fbn = await p.evaluate(() => document.querySelectorAll('.fitbrowser li').length);
+check('fit browser search', fbn === 1, fbn);
+
 // fighters: abilities
 await p.goto(`${url}?engine=${engine}&eft=${encodeURIComponent(CARRIER)}`, { waitUntil: 'networkidle0', timeout: 120000 });
 await p.waitForFunction(() => window.__lastStats?.ship?.name === 'Thanatos', { timeout: 120000 });

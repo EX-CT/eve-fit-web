@@ -10,9 +10,13 @@ export function ImportExport({ ds, fit, stats, onImport, onClose }: { ds: Datase
   const totals = Object.fromEntries(Object.entries(stats?.resources?.slots ?? {}).map(([k, v]: any) => [k, v.total]));
   const doImport = () => {
     try {
-      const r = detectAndParse(ds, text);
-      onImport(r.fit);
-      setMsg(`Imported ${r.fit.name}${r.warnings.length ? ` with ${r.warnings.length} warning(s): ${r.warnings.join('; ')}` : ''}`);
+      // several EFT fits pasted at once (e.g. a Pyfa multi-export): split on "[Ship, Name]" headers
+      const lines = text.replace(/\r/g, '').split('\n');
+      const heads = lines.map((l, i) => (/^\[[^\],]+,[^\]]*\]\s*$/.test(l.trim()) ? i : -1)).filter((i) => i >= 0);
+      const chunks = heads.length > 1 ? heads.map((h, k) => lines.slice(h, heads[k + 1] ?? lines.length).join('\n')) : [text];
+      const warns: string[] = [];
+      for (const c of chunks) { const r = detectAndParse(ds, c); warns.push(...r.warnings); onImport(r.fit); }
+      setMsg(`Imported ${chunks.length} fit(s)${warns.length ? ` with ${warns.length} warning(s): ${warns.join('; ')}` : ''}`);
     } catch (e) { setMsg((e as Error).message); }
   };
   const copy = (s: string) => { setText(s); navigator.clipboard?.writeText(s).then(() => setMsg('copied to clipboard'), () => setMsg('select and copy the text above')); };

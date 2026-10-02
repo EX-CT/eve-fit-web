@@ -70,3 +70,6 @@ tr.sel { background: #1f3a4a; }
 @media (max-width: 1100px) { main { grid-template-columns: 1fr; } aside, .center { border-right: 0; border-bottom: 1px solid var(--line); max-height: none; } }
 .subopts { width: 100%; display: flex; flex-wrap: wrap; gap: 4px 12px; padding-left: 16px; font-size: 11px; color: #9aa7b3; }
 .attrs tr.changed td { color: var(--acc); } .attrs th { text-align: left; font-weight: normal; color: #9aa7b3; } .attrs th.num { text-align: right; }
+.fitbrowser details summary { cursor: pointer; padding: 3px 2px; color: #c9d4de; }
+.fitbrowser .search { width: 100%; margin-bottom: 4px; }
+label.button { display: inline-block; padding: 3px 8px; border: 1px solid #3a4652; border-radius: 3px; cursor: pointer; background: #1e252d; }
