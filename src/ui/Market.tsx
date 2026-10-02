@@ -57,14 +57,20 @@ export function Market({ ds, onPick, onInfo }: { ds: Dataset; onPick: (t: number
 
 const stripTags = (s: string) => s.replace(/<[^>]+>/g, '');
 
-export function ItemInfo({ ds, id, onClose }: { ds: Dataset; id: number; onClose: () => void }) {
+/** Where an info dialog was opened from: a fitted item gets its engine-computed ("fitted") attribute values. */
+export type InfoCtx = { module?: number; drone?: number; ship?: boolean; charge?: boolean };
+
+export function ItemInfo({ ds, id, onClose, fitted, fittedNote }: { ds: Dataset; id: number; onClose: () => void; fitted?: Record<string, number> | null; fittedNote?: string }) {
   const t = ds.type(id);
   const [all, setAll] = useState(false);
   if (!t) return null;
   const traits = ds.raw.traits?.[id];
   const req = ds.raw.required_skills?.[id] ?? [];
-  const attrs = Object.entries(t.attrs)
-    .map(([a, v]) => ({ a: +a, v, info: ds.raw.attributes[a] }))
+  const fittedById = new Map<number, number>();
+  for (const [k, v] of Object.entries(fitted ?? {})) { const aid = /^\d+$/.test(k) ? +k : ds.attrId(k); if (aid != null && typeof v === 'number') fittedById.set(aid, v); }
+  const ids = new Set([...Object.keys(t.attrs).map(Number), ...fittedById.keys()]);
+  const attrs = [...ids]
+    .map((a) => ({ a, v: t.attrs[a] as number | undefined, f: fittedById.get(a), info: ds.raw.attributes[a] }))
     .filter((x) => all || x.info?.published)
     .sort((x, y) => (x.info?.display ?? x.info?.name ?? '').localeCompare(y.info?.display ?? y.info?.name ?? ''));
   const unit = (u?: number | null) => (u != null ? ds.raw.units?.[u]?.display ?? '' : '');
@@ -86,8 +92,15 @@ export function ItemInfo({ ds, id, onClose }: { ds: Dataset; id: number; onClose
         )}
         {req.length > 0 && <p><b>Required skills:</b> {req.map(([s, l]) => `${ds.name(s)} ${l}`).join(', ')}</p>}
         <label><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> show unpublished attributes</label>
-        <table className="attrs"><tbody>
-          {attrs.map((x) => <tr key={x.a}><td>{x.info?.display || x.info?.name || x.a}</td><td className="num">{+x.v.toFixed(4)} {unit(x.info?.unit)}</td></tr>)}
+        {fitted !== undefined && <p className="muted">{fitted ? 'Fitted values computed by the engine (changed values highlighted).' : fittedNote ?? 'computing fitted values…'}</p>}
+        <table className="attrs">
+          {fitted && <thead><tr><th>attribute</th><th className="num">base</th><th className="num">fitted</th></tr></thead>}
+          <tbody>
+          {attrs.map((x) => {
+            const fmt = (v: number | undefined) => (v == null ? '—' : `${+v.toFixed(4)} ${unit(x.info?.unit)}`);
+            const changed = fitted && x.f != null && (x.v == null || Math.abs(x.f - x.v) > 1e-9 * Math.max(1, Math.abs(x.v)));
+            return <tr key={x.a} className={changed ? 'changed' : ''}><td>{x.info?.display || x.info?.name || x.a}</td><td className="num">{fmt(x.v)}</td>{fitted && <td className="num">{fmt(x.f)}</td>}</tr>;
+          })}
         </tbody></table>
         <button onClick={onClose}>Close</button>
       </div>

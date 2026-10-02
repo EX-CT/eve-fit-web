@@ -96,6 +96,13 @@ const toggled = await p.evaluate(() => { const l = [...document.querySelectorAll
 s = await waitNew(s);
 check('booster side effect lowers armor HP', toggled && s.defense?.hp?.armor < a0, `${a0} -> ${s.defense?.hp?.armor}`);
 
+// show info on a fitted module -> engine-computed fitted values
+await p.evaluate(() => [...document.querySelectorAll('.mod .mname')].find((e) => e.textContent.startsWith('Heavy Neutron Blaster II')).click());
+await p.waitForFunction(() => document.querySelector('.dialog table.attrs thead') || document.querySelector('.dialog')?.textContent.includes('unavailable') || document.querySelector('.dialog')?.textContent.includes('did not return'), { timeout: 30000 });
+const fi = await p.evaluate(() => ({ head: !!document.querySelector('.dialog table.attrs thead'), changed: document.querySelectorAll('.dialog tr.changed').length, note: document.querySelector('.dialog p.muted')?.textContent }));
+check('show info: fitted attribute values', fi.head && fi.changed > 0, `${fi.changed} changed; ${fi.note}`);
+await clickText('.dialog button', 'Close');
+
 // manual fleet buff (shield harmonizing)
 await clickText('.tabs button', 'Projected');
 const sr0 = s.defense?.resonance?.shield?.em;

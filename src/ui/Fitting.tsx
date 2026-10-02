@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { InfoCtx } from './Market';
 import type { Dataset, Slot } from '../data/dataset';
 import type { Fit, FitModule, Library, ModState } from '../fit/model';
 import type { FitStats } from '../engine/adapter';
@@ -10,7 +11,7 @@ const STATE_ICON: Record<ModState, string> = { offline: '○', online: '◐', ac
 
 export interface FitProps {
   ds: Dataset; fit: Fit; lib: Library; stats: FitStats | null;
-  onChange: (f: Fit) => void; onInfo: (id: number) => void;
+  onChange: (f: Fit) => void; onInfo: (id: number, ctx?: InfoCtx) => void;
 }
 
 function slotTotal(ds: Dataset, fit: Fit, stats: FitStats | null, s: Slot): number {
@@ -38,7 +39,7 @@ function ModuleRow({ ds, m, idx, fit, stats, onChange, onInfo }: { ds: Dataset; 
   return (
     <div className={'mod' + (viol.length ? ' bad' : '')} title={viol.map((v: any) => v.message).join('\n')}>
       <button className={'state s-' + m.state} onClick={() => cycle(1)} onContextMenu={(e) => { e.preventDefault(); cycle(-1); }} title={`${m.state} (click: next, right-click: previous)`}>{STATE_ICON[m.state]}</button>
-      <span className="mname" onClick={() => onInfo(m.type_id)}>{ds.name(m.type_id)}{m.mutation ? ' ✦' : ''}</span>
+      <span className="mname" onClick={() => onInfo(m.type_id, { module: idx })}>{ds.name(m.type_id)}{m.mutation ? ' ✦' : ''}</span>
       {charges.length > 0 && (
         <select value={m.charge_type_id ?? ''} onChange={(e) => set({ charge_type_id: e.target.value ? +e.target.value : null })}>
           <option value="">— no charge —</option>
@@ -89,7 +90,7 @@ function Bays(p: FitProps) {
   return (
     <>
       {fit.drones.length > 0 && <div className="bay"><h4>Drones</h4>{fit.drones.map((d, i) => (
-        <div className="mod" key={i}><span className="mname" onClick={() => onInfo(d.type_id)}>{ds.name(d.type_id)}</span>
+        <div className="mod" key={i}><span className="mname" onClick={() => onInfo(d.type_id, { drone: i })}>{ds.name(d.type_id)}</span>
           <span>qty <Qty value={d.quantity} min={1} onChange={(v) => onChange({ ...fit, drones: fit.drones.map((x, j) => (j === i ? { ...x, quantity: v, active: Math.min(x.active, v) } : x)) })} /></span>
           <span>active <Qty value={d.active} max={d.quantity} onChange={(v) => onChange({ ...fit, drones: fit.drones.map((x, j) => (j === i ? { ...x, active: v } : x)) })} /></span>
           <button className="mini" onClick={() => rm('drones', i)}>✕</button></div>))}</div>}
@@ -194,7 +195,7 @@ export function Fitting(p: FitProps & { addProjected: boolean; setAddProjected: 
   return (
     <div className="fitting">
       <div className="fithead">
-        <span className="ship" onClick={() => p.onInfo(fit.ship_type_id)}>{ds.name(fit.ship_type_id)}</span>
+        <span className="ship" onClick={() => p.onInfo(fit.ship_type_id, { ship: true })}>{ds.name(fit.ship_type_id)}</span>
         <input value={fit.name} onChange={(e) => onChange({ ...fit, name: e.target.value })} />
         {modes.length > 0 && (
           <select value={fit.mode_type_id ?? ''} onChange={(e) => onChange({ ...fit, mode_type_id: e.target.value ? +e.target.value : null })}>

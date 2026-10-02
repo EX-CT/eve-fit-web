@@ -9,7 +9,7 @@ import { EngineSettings } from './ui/EngineSettings';
 import { Fitting } from './ui/Fitting';
 import { Graphs } from './ui/Graphs';
 import { ImportExport } from './ui/ImportExport';
-import { ItemInfo, Market } from './ui/Market';
+import { ItemInfo, Market, type InfoCtx } from './ui/Market';
 import { Profiles } from './ui/Profiles';
 import { Stats } from './ui/Stats';
 import { Tabs } from './ui/common';
@@ -46,8 +46,14 @@ export default function App() {
   const [ms, setMs] = useState<number | null>(null);
   const [left, setLeft] = useState<'market' | 'fits' | 'char' | 'profiles'>('market');
   const [center, setCenter] = useState<'fit' | 'graphs'>('fit');
-  const [info, setInfo] = useState<number | null>(null);
+  const [infoState, setInfoState] = useState<{ id: number; ctx?: InfoCtx } | null>(null);
+  const [fitted, setFitted] = useState<Record<string, number> | null | undefined>(undefined);
+  const [fittedNote, setFittedNote] = useState<string | undefined>(undefined);
+  const setInfo = (id: number | null, ctx?: InfoCtx) => setInfoState(id == null ? null : { id, ctx });
+  const info = infoState?.id ?? null;
   const [showIO, setShowIO] = useState(false);
+  const [build, setBuild] = useState<{ dataset_tag?: string; engine_d?: string; engine_f?: string; web?: string; built_at?: string; run?: string } | null>(null);
+  useEffect(() => { fetch(`${import.meta.env.BASE_URL}build-info.json`).then((r) => (r.ok ? r.json() : null)).then(setBuild, () => {}); }, []);
   const [addProjected, setAddProjected] = useState(false);
   const { lib, settings } = state;
   const fit = settings.activeFitId ? lib.fits[settings.activeFitId] ?? null : null;
@@ -106,6 +112,26 @@ export default function App() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reqJson, engineReady]);
+
+  // "Show info" on a fitted item: one extra calc with include_attributes=all
+  useEffect(() => {
+    const ctx = infoState?.ctx;
+    if (!ctx || !request || !engineRef.current) { setFitted(undefined); return; }
+    setFitted(null); setFittedNote(undefined);
+    const req = { ...request, options: { ...(request as { options: object }).options, include_attributes: 'all' } };
+    let live = true;
+    engineRef.current.calc(req).then((r) => {
+      if (!live) return;
+      const a = (r as { attributes?: { ship?: Record<string, number>; modules?: { module_index?: number; attributes?: Record<string, number> }[]; drones?: { drone_index?: number; attributes?: Record<string, number> }[] } }).attributes;
+      let v: Record<string, number> | undefined;
+      if (ctx.ship) v = a?.ship;
+      else if (ctx.module != null) v = (a?.modules ?? []).find((m, i) => (m.module_index ?? i) === ctx.module)?.attributes;
+      else if (ctx.drone != null) v = (a?.drones ?? []).find((m, i) => (m.drone_index ?? i) === ctx.drone)?.attributes;
+      if (v) setFitted(v); else { setFitted(null); setFittedNote('this engine did not return fitted attribute values'); }
+    }, (e) => { if (live) { setFitted(null); setFittedNote(`fitted values unavailable: ${e.message}`); } });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infoState, reqJson]);
 
   const pick = (id: number) => {
     if (!ds) return;
@@ -189,8 +215,9 @@ export default function App() {
       <footer className="muted">
         Engine via a swappable adapter (in-browser TS / WASM worker or HTTP). Data: <a href="https://github.com/EX-CT/eve-sde-pipeline/releases">EX-CT/eve-sde-pipeline</a> release.
         EVE Online data © CCP hf. · <a href="https://github.com/EX-CT/eve-fit-web">source</a>
+        {build && <> · build <a href={build.run}>{build.web}</a> ({build.built_at?.replace('T', ' ').replace(/:\d\dZ$/, ' UTC')}) · dataset {build.dataset_tag} · engine D {build.engine_d} · engine F {build.engine_f ?? 'n/a'}</>}
       </footer>
-      {info != null && <ItemInfo ds={ds} id={info} onClose={() => setInfo(null)} />}
+      {info != null && <ItemInfo ds={ds} id={info} fitted={fitted} fittedNote={fittedNote} onClose={() => setInfo(null)} />}
       {showIO && <ImportExport ds={ds} fit={fit} stats={stats} onImport={(f) => { addFit(f); setShowIO(false); }} onClose={() => setShowIO(false)} />}
     </div>
   );
