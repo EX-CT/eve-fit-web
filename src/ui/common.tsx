@@ -39,7 +39,7 @@ export function Bar({ used, total, label }: { used: number; total: number; label
   );
 }
 
-export interface ChartSeries { name: string; points: [number, number][] }
+export interface ChartSeries { name: string; points: [number, number][]; dash?: string; color?: number }
 const COLORS = ['#4fc3f7', '#ffb74d', '#81c784', '#e57373', '#ba68c8', '#fff176'];
 
 export function LineChart({ series, xLabel, yLabel, height = 260 }: { series: ChartSeries[]; xLabel: string; yLabel: string; height?: number }) {
@@ -58,10 +58,10 @@ export function LineChart({ series, xLabel, yLabel, height = 260 }: { series: Ch
       <text x={(W + L) / 2} y={H - 4} textAnchor="middle" className="axis">{xLabel}</text>
       <text x={12} y={H / 2} textAnchor="middle" className="axis" transform={`rotate(-90 12 ${H / 2})`}>{yLabel}</text>
       {series.map((s, i) => (
-        <polyline key={s.name} fill="none" stroke={COLORS[i % COLORS.length]} strokeWidth={2}
+        <polyline key={s.name} fill="none" stroke={COLORS[(s.color ?? i) % COLORS.length]} strokeWidth={2} strokeDasharray={s.dash}
           points={s.points.filter((p) => Number.isFinite(p[1])).map((p) => `${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`).join(' ')} />
       ))}
-      {series.map((s, i) => <text key={'l' + s.name} x={W - R - 4} y={T + 14 + i * 14} textAnchor="end" fill={COLORS[i % COLORS.length]}>{s.name}</text>)}
+      {series.map((s, i) => <text key={'l' + s.name} x={W - R - 4} y={T + 14 + i * 14} textAnchor="end" fill={COLORS[(s.color ?? i) % COLORS.length]}>{s.dash ? '┄ ' : ''}{s.name}</text>)}
     </svg>
   );
 }

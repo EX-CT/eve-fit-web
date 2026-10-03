@@ -4,7 +4,7 @@
 import type { Dataset } from '../data/dataset';
 import type { FitStats } from '../engine/adapter';
 
-export interface Series { name: string; points: [number, number][] }
+export interface Series { name: string; points: [number, number][]; dash?: string; color?: number }
 export interface Target { signature_radius: number; velocity: number }
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);

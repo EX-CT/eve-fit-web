@@ -11,6 +11,8 @@ import { CharacterEditor } from './ui/Character';
 import { EngineSettings } from './ui/EngineSettings';
 import { Fitting } from './ui/Fitting';
 import { Graphs } from './ui/Graphs';
+import { Compare } from './ui/Compare';
+import { WhatIf } from './ui/WhatIf';
 import { ImportExport } from './ui/ImportExport';
 import { ItemInfo, Market, type InfoCtx } from './ui/Market';
 import { FitBrowser } from './ui/FitBrowser';
@@ -51,7 +53,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [ms, setMs] = useState<number | null>(null);
   const [left, setLeft] = useState<'market' | 'fits' | 'char' | 'profiles' | 'about'>('market');
-  const [center, setCenter] = useState<'fit' | 'graphs'>('fit');
+  const [center, setCenter] = useState<'fit' | 'graphs' | 'compare' | 'whatif'>('fit');
   const [infoState, setInfoState] = useState<{ id: number; ctx?: InfoCtx } | null>(null);
   const [fitted, setFitted] = useState<Record<string, number> | null | undefined>(undefined);
   const [fittedNote, setFittedNote] = useState<string | undefined>(undefined);
@@ -259,10 +261,12 @@ export default function App() {
           {left === 'about' && <About cfg={settings.engine} status={engineStatus} st={stats} ds={ds} build={build} graphBackend={graphBackend} />}
         </aside>
         <section className="center">
-          <Tabs tabs={[['fit', t('Fit')], ['graphs', t('Graphs')]]} value={center} onChange={setCenter} />
-          {!fit ? <p className="muted">{t('No fit selected.')}</p> : center === 'fit'
+          <Tabs tabs={[['fit', t('Fit')], ['graphs', t('Graphs')], ['compare', t('Compare')], ['whatif', t('What-if')]]} value={center} onChange={setCenter} />
+          {center === 'compare' ? <Compare ds={ds} lib={lib} activeId={fit?.id ?? null} engine={engineReady ? engineRef.current : null} onOpen={(id) => { update((s) => ({ ...s, settings: { ...s.settings, activeFitId: id } })); setCenter('fit'); }} />
+          : !fit ? <p className="muted">{t('No fit selected.')}</p> : center === 'whatif' ? <WhatIf ds={ds} fit={fit} lib={lib} engine={engineReady ? engineRef.current : null} onApply={setFit} />
+          : center === 'fit'
             ? <Fitting ds={ds} fit={fit} lib={lib} stats={stats} onChange={setFit} onInfo={setInfo} addProjected={addProjected} setAddProjected={setAddProjected} />
-            : <Graphs ds={ds} st={stats} target={lib.targetProfiles[fit.target_profile_id]} engine={engineReady ? engineRef.current : null} request={request} engineReady={engineReady} />}
+            : <Graphs ds={ds} st={stats} target={lib.targetProfiles[fit.target_profile_id]} engine={engineReady ? engineRef.current : null} request={request} engineReady={engineReady} lib={lib} fitId={fit.id} />}
         </section>
         <aside className="right"><Stats st={stats} busy={busy} ms={ms} error={calcErr} ds={ds} fit={fit} /><PriceBox ds={ds} fit={fit} /></aside>
       </main>

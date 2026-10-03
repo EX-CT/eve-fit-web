@@ -3,7 +3,7 @@
 
 export interface TypeRow {
   name: string; group: number; category: number; market_group?: number | null; meta_group?: number | null;
-  meta_level?: number | null; published?: boolean; race?: number | null; tech_level?: number | null;
+  meta_level?: number | null; published?: boolean; race?: number | null; tech_level?: number | null; variation_parent?: number | null;
   attrs: Record<string, number>; effects: [number, boolean | number][]; mass?: number; volume?: number;
   capacity?: number; radius?: number;
 }
@@ -53,6 +53,7 @@ export class Dataset {
   readonly skills: number[] = [];
   lang: Lang = 'en';
   private searchIndex: { id: number; en: string; zh: string }[] = [];
+  private varIndex: Map<number, number[]> | null = null;
 
   constructor(raw: RawDataset) {
     this.raw = raw;
@@ -222,6 +223,24 @@ export class Dataset {
     }
     scored.sort((a, b) => a[0] - b[0] || this.metaLevel(a[1]) - this.metaLevel(b[1]) || a[1] - b[1]);
     return scored.slice(0, limit).map((x) => x[1]);
+  }
+
+  /** Meta variations of a type (same variation parent, published, incl. the type itself), by meta level then name. */
+  variations(id: number): number[] {
+    if (!this.varIndex) {
+      this.varIndex = new Map();
+      for (const [k, t] of Object.entries(this.raw.types)) {
+        if (t.published === false) continue;
+        const root = t.variation_parent ?? +k;
+        const l = this.varIndex.get(root) ?? [];
+        l.push(+k);
+        this.varIndex.set(root, l);
+      }
+      for (const l of this.varIndex.values()) l.sort((a, b) => this.metaLevel(a) - this.metaLevel(b) || this.name(a, 'en').localeCompare(this.name(b, 'en')));
+    }
+    const t = this.raw.types[id];
+    if (!t) return [];
+    return this.varIndex.get(t.variation_parent ?? id) ?? [id];
   }
 
   byExactName(name: string): number | undefined { return this.byName.get(name.trim().toLowerCase()); }

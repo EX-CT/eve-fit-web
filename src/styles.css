@@ -78,3 +78,9 @@ label.button { display: inline-block; padding: 3px 8px; border: 1px solid #3a465
 .sdetoggle { display: block; margin: 4px 0 6px; }
 .graph-src { margin-left: auto; font-size: 12px; padding: 1px 6px; border-radius: 3px; border: 1px solid var(--mut); color: var(--mut); }
 .graph-src.engine { color: #3c9; border-color: #3c9; }
+
+/* compare / what-if */
+.cmp-pick { list-style: none; padding: 0; margin: 4px 0; max-height: 180px; overflow: auto; columns: 2; }
+td.best { color: #7fd17f; font-weight: 600; } .delta { font-size: 10px; color: var(--mut); } .delta.up { color: #7fd17f; } .delta.down { color: #e08a7a; }
+td.up { color: #7fd17f; } td.down { color: #e08a7a; } tr.warnrow td:first-child { color: #e0b96a; } tr.bad td { opacity: .5; }
+button.tiny { font-size: 10px; padding: 0 4px; margin-left: 3px; }

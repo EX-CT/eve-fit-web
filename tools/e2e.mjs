@@ -289,6 +289,61 @@ await p.evaluate(() => { const l = [...document.querySelectorAll('.subopts label
 s = await waitNew(s);
 const f1 = s.offense?.total?.fighter_dps ?? s.offense?.total?.drone_dps;
 check('web.e2e.fighter-ability-toggle: disabling an attack ability lowers fighter dps', f1 < f0, `${f0} -> ${f1}`);
+// --- milestone 3: what-if, compare, multi-fit graphs, target fit, ECM burst graph (library now holds several fits) ---
+const RIFTER = '[Rifter, E2E Rifter]\nGyrostabilizer II\n\n1MN Afterburner II\n\n200mm AutoCannon II, EMP S\n200mm AutoCannon II, EMP S\n';
+await p.goto(`${url}${sep}engine=${engine}&eft=${encodeURIComponent(RIFTER)}`, { waitUntil: 'networkidle0', timeout: 120000 });
+await p.waitForFunction(() => window.__lastStats?.ship?.name === 'Rifter', { timeout: 120000 });
+s = await stats();
+const rd0 = s.offense?.total?.dps?.total;
+await clickText('.center .tabs button', 'What-if');
+await p.waitForSelector('.whatif select.wi-module');
+const acIdx = await p.evaluate(() => [...document.querySelector('.whatif select.wi-module').options].find((o) => o.text.includes('200mm AutoCannon II'))?.value);
+await p.select('.whatif select.wi-module', acIdx);
+const wv = await p.waitForFunction(() => window.__lastWhatIf?.mode === 'variations' && window.__lastWhatIf.rows.some((r) => r.label.includes('AutoCannon')) && window.__lastWhatIf, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
+const t1 = wv?.rows.find((r) => r.label === '200mm AutoCannon I');
+check('web.e2e.whatif-variations: what-if lists module variations with engine dps (T1 below T2)', wv && wv.rows.length >= 3 && t1 && t1.value < wv.base && Math.abs(wv.base - rd0) < 1e-6, wv ? `${wv.rows.length} variants; base ${wv.base}, T1 ${t1?.value}` : 'no result');
+await p.select('.whatif select.wi-mode', 'charges');
+const wc = await p.waitForFunction(() => window.__lastWhatIf?.mode === 'charges' && window.__lastWhatIf.rows.length && window.__lastWhatIf, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
+check('web.e2e.whatif-charges: what-if ranks compatible charges', wc && wc.rows.length >= 5 && wc.rows.some((r) => r.value > wc.base) && wc.rows.some((r) => r.value < wc.base), wc ? `${wc.rows.length} charges, base ${wc.base}` : 'no result');
+await p.click('.whatif .wi-table tbody tr:nth-child(2) .wi-apply');
+s = await waitNew(s);
+check('web.e2e.whatif-apply: applying a scenario changes the fit; undo restores it', Math.abs(s.offense?.total?.dps?.total - rd0) > 1e-6, `${rd0} -> ${s.offense?.total?.dps?.total}`);
+await clickText('header button', '↶ Undo');
+s = await waitNew(s);
+check('web.e2e.whatif-undo: undo after apply', Math.abs(s.offense?.total?.dps?.total - rd0) < 1e-6, s.offense?.total?.dps?.total);
+// compare: the active Rifter against the other frigates in the library (Multi A Rifter, Multi B Merlin)
+await clickText('.center .tabs button', 'Compare');
+await p.waitForSelector('.compare');
+await p.evaluate(() => { for (const n of ['Multi A', 'Multi B']) { const c = document.querySelector(`.compare input.cmp-fit[data-fit="${n}"]`); if (c && !c.checked) c.click(); } });
+const cmp = await p.waitForFunction(() => window.__lastCompare?.fits?.length >= 3 && window.__lastCompare, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
+const dpsRow = cmp?.rows.find((r) => r.key === 'dps');
+check('web.e2e.compare-fits: compare table of 3 fits with best values marked', cmp && cmp.fits[0] === 'E2E Rifter' && dpsRow && dpsRow.values.length === cmp.fits.length && Math.abs(dpsRow.values[0] - rd0) < 1e-6 && cmp.rows.some((r) => r.best.length) && await p.evaluate(() => document.querySelectorAll('.cmp-table td.best').length > 0), cmp ? `${cmp.fits.join(' | ')}; ${cmp.rows.length} metrics` : 'no result');
+// graphs: overlay Multi A on the dps graph, then Multi B as the target fit, then the ECM burst graph
+await clickText('.center .tabs button', 'Graphs');
+await p.waitForSelector('.graphs select.graph-kind');
+await p.select('.graphs select.graph-kind', 'dps');
+await p.evaluate(() => { document.querySelector('.graph-overlay').open = true; document.querySelector('.graph-overlay input[data-fit="Multi A"]').click(); });
+const og = await p.waitForFunction(() => window.__lastGraph?.fits?.length === 2 && window.__lastGraph.series?.some((x) => x.name.startsWith('Multi A:')) && window.__lastGraph, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
+const nLines = await p.evaluate(() => document.querySelectorAll('svg.chart polyline').length);
+check('web.e2e.graph-overlay: dps graph overlays a second fit', og && og.source === (GRAPH_RPC ? 'engine' : 'approx') && nLines >= 2, og ? `${og.source}: ${og.series.map((x) => x.name).join(', ')}` : 'no overlay');
+if (GRAPH_RPC) {
+  const mb = await p.evaluate(() => [...document.querySelector('.graphs select.graph-target').options].find((o) => o.text === 'Multi B')?.value);
+  await p.select('.graphs select.graph-target', mb);
+  const tg = await p.waitForFunction(() => window.__lastGraph?.target_fit === 'Multi B' && window.__lastGraph, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
+  check('web.e2e.graph-target-fit: damage graph against a target fit (engine)', tg && tg.source === 'engine' && tg.series.length >= 2, tg ? tg.series.map((x) => `${x.name}:${x.n}`).join(' ') : 'none');
+  await p.select('.graphs select.graph-target', '');
+  await p.evaluate(() => document.querySelector('.graph-overlay input[data-fit="Multi A"]').click());
+  await p.select('.graphs select.graph-kind', 'ecm');
+  const eg = await p.waitForFunction(() => window.__lastGraph?.kind === 'ecm' && window.__lastGraph.source === 'engine' && window.__lastGraph.fits?.length === 1 && window.__lastGraph, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
+  // enemy lock time at scan res 10 mm on the Rifter's signature (no damps): min(40000 / 10 / asinh(sig)^2, 1800)
+  const sigR = s.navigation?.signature_radius, want = Math.min(40000 / 10 / Math.asinh(sigR) ** 2, 1800), got = eg?.series?.find((x) => x.name.startsWith('enemy lock time'))?.first;
+  check('web.e2e.graph-ecm-burst: ECM burst graph (engine) matches the lock-time formula', got && Math.abs(got[1] - want) <= 1e-6 * want, `${got?.[1]} vs ${want}`);
+  await p.select('.graphs select.ecm-y', 'damage');
+  const ed = await p.waitForFunction(() => window.__lastGraph?.kind === 'ecm' && window.__lastGraph.series?.some((x) => x.name.startsWith('damage dealt')) && window.__lastGraph, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
+  check('web.e2e.graph-ecm-damage: ECM burst graph, damage dealt before dying', ed && ed.series[0].n > 10, ed ? `${ed.series[0].n} points` : 'none');
+}
+await clickText('.center .tabs button', 'Fit');
+
 // About / engine page
 await clickText('.left .tabs button', 'About');
 const ab2 = await p.evaluate(() => ({ be: document.querySelector('.about-backend')?.textContent, eng: document.querySelector('.about-engine')?.textContent ?? '',
