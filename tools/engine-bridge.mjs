@@ -40,6 +40,8 @@ http.createServer(async (req, res) => {
       else if (url.pathname === '/v1/graph' && req.method === 'POST') { const m = await rpc('graph', JSON.parse((await body(req)).toString())); out = m.result ?? m.error; }
       else if (url.pathname === '/v1/graph_specs') { const m = await rpc('graph_specs', {}); out = m.result ?? m.error; }
       else if (url.pathname === '/v1/meta') { const m = await rpc('meta', {}); out = m.result ?? m.error; }
+      // any engine RPC method ({method, params} -> the full {id, result} | {id, error} response): batch, prices_load, ...
+      else if (url.pathname === '/v1/rpc' && req.method === 'POST') { const q = JSON.parse((await body(req)).toString()); out = await rpc(q.method, q.params ?? null); }
       else if (url.pathname === '/healthz') out = { ok: true };
       else { res.writeHead(404, cors); res.end(); return; }
       res.writeHead(200, { ...cors, 'content-type': 'application/json' });

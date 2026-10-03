@@ -15,6 +15,9 @@ export interface Engine {
    *  undefined or resolve graphSpecs() to null; the UI then falls back to its own approximation graphs. */
   graph?(request: GraphRequest): Promise<GraphResult>;
   graphSpecs?(): Promise<GraphSpecs | null>;
+  /** Optional engine RPC (full response {id, result} | {id, error}) for methods beyond calc/graph: docs/23 `batch`,
+   *  `prices_load`. Backends without an RPC leave it undefined; engines without the method answer UNKNOWN_METHOD. */
+  rpcRaw?(method: string, params: unknown): Promise<{ result?: any; error?: { code: string; message: string } }>;
   /** Backend that answers graph() when it is not this engine itself (see GRAPH_FALLBACK); set once graphSpecs() resolved. */
   readonly graphInfo?: EngineInfo;
   dispose(): void;
@@ -106,6 +109,12 @@ class HttpEngine implements Engine {
   async graphSpecs() {
     try { const r = await fetch(`${this.base}/v1/graph_specs`); return r.ok ? asSpecs(await r.json()) : null; } catch { return null; }
   }
+  /** Bridge route POST /v1/rpc {method, params} (tools/engine-bridge.mjs). */
+  async rpcRaw(method: string, params: unknown) {
+    const r = await fetch(`${this.base}/v1/rpc`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ method, params }) });
+    if (!r.ok) return { error: { code: 'UNKNOWN_METHOD', message: `HTTP ${r.status}` } };
+    return r.json().catch(() => ({ error: { code: 'BAD_RESPONSE', message: `HTTP ${r.status}` } }));
+  }
   dispose() {}
 }
 
@@ -120,6 +129,7 @@ class GraphSplitEngine implements Engine {
   get info() { return this.primary.info; }
   init() { return this.primary.init(); }
   calc(request: unknown) { return this.primary.calc(request); }
+  get rpcRaw() { return this.primary.rpcRaw?.bind(this.primary); }
   private second() {
     return (this.g ??= (async () => {
       const e = this.makeGraph();
@@ -157,4 +167,30 @@ function createBase(cfg: EngineConfig): Engine {
     case 'wasm-j-worker': return new WorkerEngine(info, { kind: 'emjs', engineUrl: cfg.jEngineUrl ?? cfg.engineUrl.replace('/engines/d/eve-dogma-ts.mjs', '/engines/j/evej.mjs'), datasetUrl: cfg.datasetUrl });
     default: return new WorkerEngine(info, { kind: 'ts', engineUrl: cfg.engineUrl, datasetUrl: cfg.datasetUrl });
   }
+}
+
+// ---- docs/23 engine batch + prices on top of rpcRaw ----
+
+/** An RPC error is either the response's `error` or (eve-dogma) a `result` that is `{error}`. */
+const rpcError = (r: { result?: any; error?: { code: string; message: string } }) => r.error ?? (r.result && typeof r.result === 'object' && !Array.isArray(r.result) && r.result.error) ?? null;
+
+/** One engine `batch` call (docs/23 BatchRequest -> BatchResult); null when the backend has no batch RPC. */
+export async function engineBatch(e: Engine, request: Record<string, unknown>): Promise<{ results: { index: number; id?: string; label?: string; stats?: FitStats; error?: { code: string; message: string } }[] } | null> {
+  if (!e.rpcRaw) return null;
+  const r = await e.rpcRaw('batch', request).catch(() => null); // backend without an RPC export
+  if (!r) return null;
+  const err = rpcError(r);
+  if (err) { if (err.code === 'UNKNOWN_METHOD') return null; throw new Error(`${err.code}: ${err.message}`); }
+  return r.result;
+}
+
+/** Set (snapshot object) or clear (null) the engine session's market snapshot (L4, `prices_load`, label `injected`).
+ *  false when the backend has no prices RPC. */
+export async function enginePricesLoad(e: Engine, snapshot: unknown | null): Promise<boolean> {
+  if (!e.rpcRaw) return false;
+  const r = await e.rpcRaw('prices_load', snapshot == null ? { clear: true } : { snapshot }).catch(() => null);
+  if (!r) return false;
+  const err = rpcError(r);
+  if (err) { if (err.code === 'UNKNOWN_METHOD') return false; throw new Error(`${err.code}: ${err.message}`); }
+  return true;
 }

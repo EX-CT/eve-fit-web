@@ -2,7 +2,7 @@
 // the difference to the first fit.
 import { useEffect, useMemo, useState } from 'react';
 import type { Dataset } from '../data/dataset';
-import type { Engine, FitStats } from '../engine/adapter';
+import { engineBatch, type Engine, type FitStats } from '../engine/adapter';
 import { compareTable } from '../fit/metrics';
 import { toRequest, type Library } from '../fit/model';
 import { t } from '../i18n';
@@ -21,16 +21,26 @@ export function Compare({ ds, lib, activeId, engine, onOpen }: { ds: Dataset; li
   const ids = sel.filter((id) => lib.fits[id]);
   const reqs = useMemo(() => ids.map((id) => toRequest(lib.fits[id], lib)), [ids.join(','), lib]); // eslint-disable-line react-hooks/exhaustive-deps
   const key = JSON.stringify(reqs);
-  const [res, setRes] = useState<{ key: string; stats: (FitStats | null)[]; errors: string[]; ms: number } | null>(null);
+  const [res, setRes] = useState<{ key: string; stats: (FitStats | null)[]; errors: string[]; ms: number; via: 'batch' | 'calc' } | null>(null);
   useEffect(() => {
     if (!engine || !reqs.length) return;
     let alive = true;
     const t0 = performance.now();
-    Promise.all(reqs.map((r) => engine.calc(r).then((s) => [s, ''] as const, (e) => [null, (e as Error).message] as const))).then((out) => {
+    // one engine `batch` call (docs/23) when the backend has it, else one calc per fit
+    const viaBatch = async (): Promise<[FitStats | null, string][] | null> => {
+      const b = await engineBatch(engine, { batch_version: 1, fits: reqs.map((fit, i) => ({ fit, label: lib.fits[ids[i]].name })) });
+      if (!b) return null;
+      const out: [FitStats | null, string][] = reqs.map(() => [null, 'no result']);
+      for (const r of b.results ?? []) out[r.index] = r.error ? [null, `${r.error.code}: ${r.error.message}`] : [r.stats ?? null, ''];
+      return out;
+    };
+    const viaCalc = () => Promise.all(reqs.map((r) => engine.calc(r).then((s) => [s, ''] as [FitStats | null, string], (e) => [null, (e as Error).message] as [FitStats | null, string])));
+    viaBatch().catch((e) => reqs.map(() => [null, (e as Error).message] as [FitStats | null, string])).then(async (b) => {
+      const out = b ?? await viaCalc();
       if (!alive) return;
-      const v = { key, stats: out.map((o) => o[0]), errors: out.map((o) => o[1] || (o[0]?.error ? `${o[0].error.code}: ${o[0].error.message}` : '')), ms: performance.now() - t0 };
+      const v = { key, stats: out.map((o) => o[0]), errors: out.map((o) => o[1] || (o[0]?.error ? `${o[0].error.code}: ${o[0].error.message}` : '')), ms: performance.now() - t0, via: b ? 'batch' as const : 'calc' as const };
       setRes(v);
-      (window as any).__lastCompare = { fits: ids.map((id) => lib.fits[id].name), rows: compareTable(v.stats).map((r) => ({ key: r.metric.key, values: r.values, best: r.best })) };
+      (window as any).__lastCompare = { via: v.via, fits: ids.map((id) => lib.fits[id].name), rows: compareTable(v.stats).map((r) => ({ key: r.metric.key, values: r.values, best: r.best })) };
     });
     return () => { alive = false; };
   }, [key, engine]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -59,7 +69,7 @@ export function Compare({ ds, lib, activeId, engine, onOpen }: { ds: Dataset; li
           ))}</tbody>
         </table>
       )}
-      <p className="hint">{t('Each fit is computed by the active engine with its own character, profiles and options; deltas are against the first column.')}{cur ? ` ${fmt(cur.ms, 0)} ms` : ''}</p>
+      <p className="hint">{t('Each fit is computed by the active engine with its own character, profiles and options; deltas are against the first column.')}{cur ? <span className="cmp-via" data-via={cur.via}> {cur.via === 'batch' ? t('one engine batch call') : t('one calc per fit')} · {fmt(cur.ms, 0)} ms</span> : ''}</p>
     </div>
   );
 }
