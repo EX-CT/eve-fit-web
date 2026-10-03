@@ -33,7 +33,8 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
   - defense: HP, resists, EHP, raw/effective/sustained tank
   - capacitor: stability, delta, injectors
   - navigation, targeting (lock times, jam chance), drones
-  - violations and engine warnings
+  - mining yield (with waste), outgoing remote repairs / capacitor transfer (with spool range), bombs to kill per damage type and Covert Ops level, overheat burnout per module, EHP per drone / fighter (engine F stats-ext 1.10)
+  - violations (named in words) and engine warnings
 - **Price:** fit value (ship, fittings incl. loaded charges and mutaplasmids, drones/fighters, implants/boosters, cargo) from the public ESI market prices endpoint. Opt-in button, cached for 6 h.
 - **Graphs:** DPS vs range (turret hit chance, missile application, drones), capacitor vs time, regen vs fill %, speed and distance vs time, lock time vs signature, warp time vs distance. On a backend with the graph RPC (CONTRACT-GRAPHS rev 0.2: `graph_specs` / `graph`: the default `wasm-worker` (F), and `wasm-j-worker` through F) the engine computes these graphs, and the application profile (best ammo), EWAR and remote-repair graphs are added. On other backends, or if an engine graph call fails, the UI computes approximations from one stats result. A label next to the graph says which kind you are looking at.
 - **Compare:** several saved fits side by side (DPS, volley, EHP per layer, tank, capacitor, speed, align, signature, targeting, CPU/PG left, problems), each computed by the active engine; best value highlighted, deltas against the first fit (any fit can be made the baseline).
@@ -107,7 +108,8 @@ cp target/wasm32-unknown-unknown/release-small/{eve_wasm,eve_fit_formats_wasm}.w
 * Test ids: unit tests are named `web.unit.<slug>: …`, e2e checks `web.e2e.<slug>: …`; [docs/test-ids.md](docs/test-ids.md)
   maps the e2e ids to the names used before.
 * CI (`pages.yml`) gates the deploy on engine F and the formats module building, the unit tests, the e2e on
-  ts-worker and wasm-worker (F), the bench 1.9.0 corpus (331 cases) and the graphs 0.2 suite (178 cases) in the browser build.
+  ts-worker and wasm-worker (F), the bench 1.9.0 corpus (331 cases), the graphs 0.2 suite (178 cases), the bench ext suite (202 cases: stats-ext, heat,
+  validity, overrides, ...) and the effects suite (at least 2353/2378) in the browser build.
 
 ## Licence
 - UI code: MIT.
