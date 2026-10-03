@@ -534,6 +534,12 @@ check('web.e2e.library-reload-persistence: fits, folders and tags survive a relo
 }
 }
 
+// stats-ext outputs of F 20aa425 (tools/e2e-items.mjs)
+{
+  const { itemChecks } = await import('./e2e-items.mjs');
+  await itemChecks({ p, url, sep, engine, check, stats, waitNew, clickText }).catch((e) => check('web.e2e.items-run: item checks ran to the end', false, e.stack?.split('\n').slice(0, 3).join(' | ')));
+}
+
 check('web.e2e.no-page-errors: no page errors', errors.length === 0, errors.join(' | '));
 
 await b.close();
