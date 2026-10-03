@@ -25,3 +25,4 @@ dist-ssr
 public/data/
 public/engines/
 public/build-info.json
+public/prices/

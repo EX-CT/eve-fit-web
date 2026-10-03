@@ -5,7 +5,7 @@ import { DEFAULT_BACKEND } from '../engine/defaults';
 import { formatsStatus } from '../formats';
 import { t } from '../i18n';
 
-export interface BuildInfo { dataset_tag?: string; engine_d?: string; engine_f?: string; engine_f_repo?: string; engine_f_dir?: string; engine_j?: string; engine_j_repo?: string; engine_j_dir?: string; web?: string; built_at?: string; run?: string; default_engine?: string }
+export interface BuildInfo { dataset_tag?: string; engine_d?: string; engine_f?: string; engine_f_repo?: string; engine_f_dir?: string; engine_j?: string; engine_j_repo?: string; engine_j_dir?: string; web?: string; built_at?: string; run?: string; default_engine?: string; prices_snapshot?: string }
 
 const GH = 'https://github.com/EX-CT';
 const commit = (repo: string, sha?: string) => (sha ? <a href={`${GH}/${repo}/commit/${sha}`}><code>{sha}</code></a> : <span className="muted">n/a</span>);
@@ -18,6 +18,8 @@ export function About({ cfg, status, st, ds, build, graphBackend }: { cfg: Engin
     [t('Engine backend'), <><code className="about-backend">{cfg.backend}</code> {be?.label}{cfg.backend === 'http' ? <> · <code>{cfg.httpUrl}</code></> : null}</>],
     [t('Engine status'), <span className="about-status">{status}</span>],
     [t('Engine (reported)'), <span className="about-engine">{st?.meta?.engine ?? '—'}{st?.meta?.sde_build ? ` · SDE ${st.meta.sde_build}` : ''}</span>],
+    [t('Provenance (engine)'), <span className="about-prov">{st?.provenance ? <>SDE {st.provenance.sde_build}{st.provenance.sde_revision ? ` r${st.provenance.sde_revision}` : ''} ({st.provenance.sde_source ?? '?'}) · <code title={st.provenance.sde_hash}>{String(st.provenance.sde_hash ?? '').slice(0, 19)}</code>
+      {' · '}{t('prices')}: {st.provenance.price_source ?? '—'}{st.provenance.price_snapshot_id ? ` ${st.provenance.price_snapshot_id}` : ''} · {local(st.provenance.snapshot_time)}</> : t('not reported by this engine')}</span>],
     [t('Graphs computed by'), <span className="about-graphs">{graphBackend ? <><code>{graphBackend}</code>{graphBackend !== cfg.backend ? ` (${t('graph RPC fallback; fit stats from')} ${cfg.backend})` : ''}</> : t('UI approximation (backend has no graph RPC)')}</span>],
     [t('Fit formats'), <span className="about-formats" data-provider={formatsStatus().provider}>{formatsStatus().provider === 'eve-fit-formats'
       ? <>eve-fit-formats (WASM) · {commit((build?.engine_f_repo ?? 'EX-CT/eve-dogma').replace('EX-CT/', ''), build?.engine_f)} (crate eve-fit-formats-wasm)</>
@@ -28,6 +30,7 @@ export function About({ cfg, status, st, ds, build, graphBackend }: { cfg: Engin
     [t('Engine D (TypeScript)'), <>{commit('eve-dogma-lab', build?.engine_d)} · <a href={`${GH}/eve-dogma-lab/tree/variant-d`}>variant-d</a></>],
     [t('Dataset'), <span className="about-dataset">SDE {raw.sde?.build} ({raw.sde?.release_date?.slice(0, 10)}) · r{raw.dataset_revision ?? 1} · {raw.generator}
       {build?.dataset_tag ? <> · <a href={`${GH}/eve-sde-pipeline/releases/tag/${build.dataset_tag}`}>{build.dataset_tag}</a></> : null}</span>],
+    [t('Price snapshot for "update prices"'), <span className="about-prices">{build?.prices_snapshot ? <a href={`${GH}/eve-market-prices/releases/tag/${build.prices_snapshot}`}>{build.prices_snapshot}</a> : '—'}</span>],
     [t('Site build'), <>{commit('eve-fit-web', build?.web)} · {local(build?.built_at)}{build?.run ? <> · <a href={build.run}>{t('CI run')}</a></> : null}</>],
   ];
   return (

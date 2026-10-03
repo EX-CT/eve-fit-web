@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loadSdePresets } from './data/sdePresets';
 import { setUiLang, t } from './i18n';
 import { Dataset } from './data/dataset';
-import { createEngine, type Engine, type FitStats } from './engine/adapter';
+import { createEngine, enginePricesLoad, type Engine, type FitStats } from './engine/adapter';
+import { fetchLatestSnapshot, loadPriceSettings, savePriceSettings, type PriceSettings } from './data/prices';
 import { formatsRpc, importFit, initFormats } from './formats';
 import { defaultState } from './fit/states';
 import { newFit, toRequest, type Fit, type Library } from './fit/model';
@@ -16,11 +17,13 @@ import { WhatIf } from './ui/WhatIf';
 import { ImportExport } from './ui/ImportExport';
 import { ItemInfo, Market, type InfoCtx } from './ui/Market';
 import { FitBrowser } from './ui/FitBrowser';
-import { PriceBox } from './ui/PriceBox';
+import { PriceBox, type SnapshotState } from './ui/PriceBox';
 import { Profiles } from './ui/Profiles';
 import { About, type BuildInfo } from './ui/About';
 import { Stats } from './ui/Stats';
 import { Tabs } from './ui/common';
+
+const PRICE_BACKENDS = ['wasm-worker', 'http'];
 
 const DEMO_EFT = `[Rifter, Demo Rifter]
 Gyrostabilizer II
@@ -68,6 +71,11 @@ export default function App() {
     damagePatterns: { ...s.lib.damagePatterns, ...Object.fromEntries(p.damage.map((d) => [d.id, d])) },
     targetProfiles: { ...s.lib.targetProfiles, ...Object.fromEntries(p.targets.map((t) => [t.id, t])) } } }))); }, [update]);
   const [addProjected, setAddProjected] = useState(false);
+  // prices (engine price block, docs/23): local "my prices" overrides + optional injected latest market snapshot
+  const [priceSet, setPriceSetState] = useState<PriceSettings>(() => loadPriceSettings());
+  const setPriceSet = useCallback((s: PriceSettings) => { savePriceSettings(s); setPriceSetState(s); }, []);
+  const [snapState, setSnapState] = useState<SnapshotState>({ state: 'off' });
+  const [pricesVer, setPricesVer] = useState(0);
   const { lib, settings } = state;
   const fit = settings.activeFitId ? lib.fits[settings.activeFitId] ?? null : null;
 
@@ -153,7 +161,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ds]);
 
-  const request = useMemo(() => (fit ? toRequest(fit, lib) : null), [fit, lib]);
+  // backends with the docs/23 price block (engine F: in-browser WASM, or a native F behind the HTTP bridge)
+  const pricing = PRICE_BACKENDS.includes(ecfg.backend);
+  const request = useMemo(() => {
+    if (!fit) return null;
+    const r = toRequest(fit, lib);
+    return pricing ? { ...r, options: { ...(r.options as object), price: true }, ...(priceSet.mine.length ? { price_overrides: priceSet.mine } : {}) } : r;
+  }, [fit, lib, pricing, priceSet.mine]);
   const reqJson = useMemo(() => JSON.stringify(request), [request]);
 
   // stateless calc on every change (debounced, latest wins)
@@ -173,7 +187,27 @@ export default function App() {
     }, 60);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reqJson, engineReady, settings.activeFitId]);
+  }, [reqJson, engineReady, settings.activeFitId, pricesVer]);
+
+  // "update prices": inject the latest eve-market-prices snapshot into the engine session (prices_load); off = the
+  // snapshot embedded in the engine
+  useEffect(() => {
+    const eng = engineRef.current;
+    if (!engineReady || !eng || !pricing) { setSnapState({ state: 'off' }); return; }
+    let alive = true;
+    if (!priceSet.update) {
+      setSnapState({ state: 'off' });
+      enginePricesLoad(eng, null).then(() => alive && setPricesVer((v) => v + 1), () => {});
+    } else {
+      setSnapState({ state: 'loading' });
+      fetchLatestSnapshot().then(async (snap) => {
+        if (!(await enginePricesLoad(eng, snap.data))) throw new Error(t('this engine cannot load prices'));
+        if (alive) { setSnapState({ state: 'loaded', snap }); setPricesVer((v) => v + 1); }
+      }).catch((e) => alive && setSnapState({ state: 'error', error: (e as Error).message }));
+    }
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engineReady, priceSet.update, pricing]);
 
   // "Show info" on a fitted item: one extra calc with include_attributes=all
   useEffect(() => {
@@ -266,7 +300,7 @@ export default function App() {
             ? <Fitting ds={ds} fit={fit} lib={lib} stats={stats} onChange={setFit} onInfo={setInfo} addProjected={addProjected} setAddProjected={setAddProjected} />
             : <Graphs ds={ds} st={stats} target={lib.targetProfiles[fit.target_profile_id]} engine={engineReady ? engineRef.current : null} request={request} engineReady={engineReady} lib={lib} fitId={fit.id} />}
         </section>
-        <aside className="right"><Stats st={stats} busy={busy} ms={ms} error={calcErr} ds={ds} fit={fit} /><PriceBox ds={ds} fit={fit} /></aside>
+        <aside className="right"><Stats st={stats} busy={busy} ms={ms} error={calcErr} ds={ds} fit={fit} /><PriceBox ds={ds} st={stats} backend={ecfg.backend} settings={priceSet} onSettings={setPriceSet} snapshot={snapState} /></aside>
       </main>
       <footer className="muted">
         {t('Engine via a swappable adapter (in-browser TS / WASM worker or HTTP). Data:')} <a href="https://github.com/EX-CT/eve-sde-pipeline/releases">EX-CT/eve-sde-pipeline</a> {t('release')}.

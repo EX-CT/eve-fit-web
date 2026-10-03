@@ -278,10 +278,43 @@ await p.type('.fitbrowser .search', 'Merlin');
 const fbn = await p.evaluate(() => document.querySelectorAll('.fitbrowser li').length);
 check('web.e2e.fit-browser-search: fit browser search', fbn === 1, fbn);
 
-// market prices (public ESI, opt-in); skipped when offline
-await clickText('.right button', 'Load market prices');
-const price = await p.waitForFunction(() => document.querySelector('.pricetotal')?.textContent || document.querySelector('.right .error')?.textContent, { timeout: 30000 }).then((h) => h.jsonValue()).catch(() => 'timeout');
-check('web.e2e.fit-price-esi: fit price from ESI', /ISK$/.test(price) || /ESI|fetch|timeout/i.test(price), price);
+// prices: the engine's price block (docs/23) on F backends; "update prices" injects the deployed latest
+// eve-market-prices snapshot (prices_load); "my prices" are local price_overrides (self-made = 0), kept in localStorage
+const PRICING = engine === 'wasm-worker' || engine === 'http';
+if (PRICING) {
+  const pr = await p.waitForFunction(() => window.__lastStats?.price && window.__lastStats, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
+  const ui = await p.evaluate(() => ({ total: document.querySelector('.pricetotal')?.textContent ?? '', prov: document.querySelector('.price-prov')?.dataset.source ?? '' }));
+  check('web.e2e.engine-price-block: fit price from the engine price block (embedded Jita snapshot) with provenance', pr && pr.price.total_isk > 0 && /ISK$/.test(ui.total) && pr.provenance?.price_source === 'snapshot' && pr.provenance?.price_snapshot_id && ui.prov === 'snapshot',
+    pr ? `${ui.total}; ${pr.provenance?.price_source} ${pr.provenance?.price_snapshot_id}; sources ${JSON.stringify(pr.price.sources)}` : 'no price block');
+  const embeddedId = pr?.provenance?.price_snapshot_id;
+  await p.click('.price-update');
+  const up = await p.waitForFunction(() => (window.__lastStats?.provenance?.price_source === 'file' && window.__lastStats) || (document.querySelector('.price-snapshot .error')?.textContent), { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => 'timeout');
+  check('web.e2e.price-update-snapshot: "update prices" injects the latest eve-market-prices snapshot into the engine', up?.price?.sources?.injected > 0 && up.provenance.price_snapshot_id && await p.evaluate(() => document.querySelector('.price-snapshot')?.dataset.state === 'loaded'),
+    typeof up === 'string' ? up : `${embeddedId} -> ${up.provenance.price_snapshot_id} (${up.provenance.snapshot_time}); sources ${JSON.stringify(up.price.sources)}`);
+  const before = up?.price?.total_isk;
+  await p.evaluate(() => { document.querySelector('.price-items').open = true; });
+  const tid = await p.evaluate(() => { const r = [...document.querySelectorAll('.price-items tr[data-type]')].find((x) => x.querySelector('.self-made') && x.dataset.source !== 'snapshot'); r?.querySelector('.self-made').click(); return r ? +r.dataset.type : null; });
+  const mine = await p.waitForFunction((t) => window.__lastStats?.price && Object.values(window.__lastStats.price.sections).flatMap((x) => x.items).some((l) => l.type_id === t && l.source.startsWith('override') && l.unit_isk === 0) && window.__lastStats, { timeout: 30000 }, tid).then((h) => h.jsonValue()).catch(() => null);
+  const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('eve-fit-web-my-prices') ?? 'null'));
+  check('web.e2e.my-prices-self-made: a "my price" (self-produced = 0) is sent as price_override and stored locally', mine && mine.price.total_isk < before && stored?.mine?.some((o) => o.type_id === tid && o.price === 0) && stored.update === true,
+    mine ? `type ${tid}: ${before} -> ${mine.price.total_isk}; stored ${JSON.stringify(stored)}` : `type ${tid}: no override line`);
+  // my prices editor: a category multiplier (category 6 = ships) via the add row, then remove both entries
+  await p.evaluate(() => { document.querySelector('.my-prices').open = true; });
+  await p.select('.my-prices .mp-target', 'category_id');
+  await p.type('.my-prices .mp-id', '6');
+  await p.select('.my-prices .mp-mode', 'multiplier');
+  await p.evaluate(() => { const i = document.querySelector('.my-prices .mp-value'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, '2'); i.dispatchEvent(new Event('input', { bubbles: true })); });
+  await p.click('.my-prices .mp-add');
+  const mult = await p.waitForFunction(() => window.__lastStats?.price?.sections?.ship?.items?.[0]?.source?.startsWith('override') && window.__lastStats.price.sections.ship.items[0], { timeout: 30000 }).then((h) => h.jsonValue()).catch(() => null);
+  check('web.e2e.my-prices-editor: a category multiplier from the "my prices" editor scales the ship price', mult && mult.multiplier === 2 && mult.layer === 'request', mult ? JSON.stringify(mult) : 'no override on the ship');
+  for (let i = 0; i < 5 && await p.$('.my-prices .mine-delete'); i++) { await p.click('.my-prices .mine-delete'); await new Promise((r) => setTimeout(r, 100)); }
+  await p.click('.price-update');
+  const back = await p.waitForFunction(() => window.__lastStats?.provenance?.price_source === 'snapshot' && !Object.keys(window.__lastStats.price.sources).some((s) => s.startsWith('override')) && window.__lastStats, { timeout: 30000 }).then((h) => h.jsonValue()).catch(() => null);
+  check('web.e2e.price-reset: clearing my prices and "update prices" returns to the embedded snapshot', back && back.provenance.price_snapshot_id === embeddedId, back ? JSON.stringify(back.price.sources) : 'not reset');
+} else {
+  const un = await p.waitForSelector('.price-unsupported', { timeout: 10000 }).then(() => true).catch(() => false);
+  check('web.e2e.price-unsupported: backends without the engine price block say so', un);
+}
 
 // fighters: abilities
 await p.goto(`${url}${sep}engine=${engine}&eft=${encodeURIComponent(CARRIER)}`, { waitUntil: 'networkidle0', timeout: 120000 });
@@ -323,6 +356,7 @@ await p.waitForSelector('.compare');
 await p.evaluate(() => { for (const n of ['Multi A', 'Multi B']) { const c = document.querySelector(`.compare input.cmp-fit[data-fit="${n}"]`); if (c && !c.checked) c.click(); } });
 const cmp = await p.waitForFunction(() => window.__lastCompare?.fits?.length >= 3 && window.__lastCompare, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
 const dpsRow = cmp?.rows.find((r) => r.key === 'dps');
+check('web.e2e.compare-batch: the compare window computes all fits in one engine batch call (docs/23) on F backends, one calc per fit elsewhere', cmp?.via === (engine === 'wasm-worker' || engine === 'http' ? 'batch' : 'calc') && await p.evaluate((v) => document.querySelector('.cmp-via')?.dataset.via === v, cmp?.via), cmp?.via);
 check('web.e2e.compare-fits: compare table of 3 fits with best values marked', cmp && cmp.fits[0] === 'E2E Rifter' && dpsRow && dpsRow.values.length === cmp.fits.length && Math.abs(dpsRow.values[0] - rd0) < 1e-6 && cmp.rows.some((r) => r.best.length) && await p.evaluate(() => document.querySelectorAll('.cmp-table td.best').length > 0), cmp ? `${cmp.fits.join(' | ')}; ${cmp.rows.length} metrics` : 'no result');
 // graphs: overlay Multi A on the dps graph, then Multi B as the target fit, then the ECM burst graph
 await clickText('.center .tabs button', 'Graphs');

@@ -25,6 +25,9 @@ function dynamicKeys(): string[] {
       for (const m of s.matchAll(/\b[A-Z_]{4,}: '([^']+)'/g)) keys.push(m[1]);
       for (const m of s.matchAll(/\['[a-z_]+', '([^']+)', '[^']+'\]/g)) keys.push(m[1]);
     }
+    // price panel label tables (sections, sources, override targets) and "my prices" validation messages
+    if (/ui\/PriceBox\.tsx$/.test(p)) for (const l of s.split('\n').filter((x) => /^const [A-Z_]+_LABEL\b/.test(x))) for (const m of l.matchAll(/\b[a-z_]+: '([^']+)'/g)) keys.push(m[1]);
+    if (/data\/prices\.ts$/.test(p)) for (const m of s.matchAll(/return '([^']+)'/g)) keys.push(m[1]);
     // chart axis labels and series names (graph views)
     if (/(ui\/Graphs\.tsx|fit\/graphs\.ts)$/.test(p)) for (const m of s.matchAll(/\b(?:x|y|name): '([^']+)'/g)) if (/[A-Z %]/.test(m[1])) keys.push(m[1]);
   }
