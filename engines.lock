@@ -6,9 +6,11 @@
 # eve-dogma-lab variant-f-features 4b8f5f9 with byte-identical output); the web build uses crate eve-wasm (C ABI
 # alloc/dealloc/calc/rpc), the formats layer crate eve-fit-formats-wasm (alloc/dealloc/rpc: format_import / format_export,
 # all fit import/export of the site; the engine takes structured fits only since 597b7fc), the http e2e the eve-cli
-# binary `eve-fit`. Engine and formats module are built from this one pin.
+# binary `eve-fit`. Engine and formats module are built from this one pin. 20aa425 (main after 2da8150) adds the contract
+# 1.10 stats-ext outputs: mining, outgoing (remote reps / cap transfer), bombing, drones/fighters items[] (EHP),
+# modules[].heat (burnout), the 2da8150 validation codes (capital modules on subcaps, MISSING_SKILL per skill), RPC optimize.
 # Format: <owner/repo>@<full sha>:<directory of the Cargo workspace>.
-ENGINE_F_SRC=EX-CT/eve-dogma@597b7fc44d2aba371ae94a96396afa54e2c2d9bd:.
+ENGINE_F_SRC=EX-CT/eve-dogma@20aa42571a62b378c0d02ef37df28b116babd475:.
 # CONTRACT-GRAPHS 0.2 case suite (eve-dogma-bench, branch graphs-round2) run in headless Chrome against wasm-worker (F)
 GRAPHS_BENCH_SHA=8c40921911aed9a7d7f032a2f9d4c43986ca0232
 # Optional speed reference J (round-1 winner; C++20 -> WASM with Emscripten, backend wasm-j-worker; graphs via F). Format: <owner/repo>@<full sha>:<directory>.
