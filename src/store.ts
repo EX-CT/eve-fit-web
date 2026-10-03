@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { BUILTIN_CHARACTERS, BUILTIN_DAMAGE, BUILTIN_TARGETS } from './data/presets';
 import type { Library } from './fit/model';
 import type { EngineConfig } from './engine/adapter';
-import { DEFAULT_BACKEND } from './engine/defaults';
+import { canonicalBackend, DEFAULT_BACKEND } from './engine/defaults';
 
 const KEY = 'eve-fit-web:v1';
 
@@ -15,20 +15,19 @@ const base = import.meta.env.BASE_URL;
 export function defaultEngineConfig(): EngineConfig {
   const q = new URLSearchParams(location.search);
   return {
-    backend: q.get('engine') ?? DEFAULT_BACKEND,
+    backend: canonicalBackend(q.get('engine') ?? DEFAULT_BACKEND),
     httpUrl: q.get('http') ?? 'http://127.0.0.1:8080',
     datasetUrl: new URL(`${base}data/dataset.json.gz`, location.href).href,
     engineUrl: new URL(`${base}engines/d/eve-dogma-ts.mjs`, location.href).href,
     wasmUrl: new URL(`${base}engines/f/eve_dogma_f.wasm`, location.href).href,
     jEngineUrl: new URL(`${base}engines/j/evej.mjs`, location.href).href,
-    g4WasmUrl: new URL(`${base}engines/g4/eve_dogma_f.wasm`, location.href).href,
   };
 }
 
 /** A saved backend that equals the default of the build that saved it was never chosen by the user: follow the current default. */
 function savedBackend(e: { backend?: string; default_at_save?: string } | undefined): string {
   if (!e?.backend) return DEFAULT_BACKEND;
-  return e.backend === (e.default_at_save ?? 'ts-worker') ? DEFAULT_BACKEND : e.backend;
+  return e.backend === (e.default_at_save ?? 'ts-worker') ? DEFAULT_BACKEND : canonicalBackend(e.backend);
 }
 
 function initial(): AppState {
@@ -40,7 +39,7 @@ function initial(): AppState {
       Object.assign(lib, saved.lib ?? {});
       settings = { ...settings, ...saved.settings, engine: { ...defaultEngineConfig(), backend: savedBackend(saved.settings?.engine), httpUrl: saved.settings?.engine?.httpUrl ?? settings.engine.httpUrl } };
       const q = new URLSearchParams(location.search);
-      if (q.get('engine')) settings.engine.backend = q.get('engine')!;
+      if (q.get('engine')) settings.engine.backend = canonicalBackend(q.get('engine')!);
       if (q.get('http')) settings.engine.httpUrl = q.get('http')!;
     }
   } catch { /* ignore corrupt storage */ }

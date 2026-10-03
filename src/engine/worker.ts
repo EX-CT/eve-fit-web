@@ -1,7 +1,7 @@
 // Web Worker hosting an in-browser engine so calculations never block the UI.
 //  kind 'ts':   variant D bundle (ES module exporting loadDatasetUrl + calc), dataset fetched from datasetUrl.
 //  kind 'wasm': variant F wasm32-unknown-unknown module with C-ABI exports alloc/dealloc/calc (data compiled in);
-//               an `rpc` export (graphs-g4: methods graph / graph_specs) is used for engine-computed graphs.
+//               an `rpc` export (variant F: methods graph / graph_specs) is used for engine-computed graphs.
 //  kind 'emjs': Emscripten ES module (variant J: createEvej(), C functions evej_open / evej_calc / evej_rpc via cwrap);
 //               the dataset (.json.gz) is fetched and written to the module's virtual FS, then opened.
 /// <reference lib="webworker" />

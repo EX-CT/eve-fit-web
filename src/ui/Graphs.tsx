@@ -126,7 +126,7 @@ export function Graphs({ ds, st, target, engine, request, engineReady }: {
       {view ? <LineChart series={view.s} xLabel={view.x} yLabel={view.y} /> : source === 'pending' ? <div className="muted">…</div> : <div className="muted">{t('No data for this graph.')}</div>}
       {source === 'engine'
         ? <p className="hint">Engine-computed by <code>{graphBy}</code> via the graph RPC (CONTRACT-GRAPHS rev 0.2{specs?.contract ? `; engine reports “${specs.contract}”` : ''}){engine && graphBy !== engine.info.id ? <>; fit stats come from <code>{engine.info.id}</code>, the graph engine recomputes the fit from the same request</> : null}. The total includes drones; distances are surface-to-surface, the target moves at the given transversal speed.</p>
-        : <p className="hint">{engView?.error ? `Engine graph failed (${engView.error}); showing the UI approximation. ` : ''}Graphs are computed in the UI from one engine result with public formulas (turret hit chance, missile application, capacitor/shield regen curves, align and warp profiles), as an approximation of Pyfa's graph window. Backends with the graph RPC (e.g. wasm-g4-worker) compute them in the engine.</p>}
+        : <p className="hint">{engView?.error ? `Engine graph failed (${engView.error}); showing the UI approximation. ` : ''}Graphs are computed in the UI from one engine result with public formulas (turret hit chance, missile application, capacitor/shield regen curves, align and warp profiles), as an approximation of Pyfa's graph window. Backends with the graph RPC (e.g. wasm-worker, variant F) compute them in the engine.</p>}
     </div>
   );
 }

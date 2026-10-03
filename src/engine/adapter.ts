@@ -1,3 +1,4 @@
+import { canonicalBackend } from './defaults';
 // Engine adapter: the UI talks to a stateless `calc(FitRequest) -> FitStats` function. Backends are swappable at
 // runtime (settings panel / ?engine= URL parameter), so the final engine choice does not touch UI code.
 
@@ -19,11 +20,11 @@ export interface Engine {
   dispose(): void;
 }
 
-/** Backends whose graphs come from another backend's graph RPC while their own engine has none. The mainline is F:
- *  F (wasm-worker, the default) computes the fit stats, its graph layer graphs-g4 (wasm-g4-worker) the graphs.
- *  TODO: when variant-f-features (graphs merged into F) passes bench 1.9.0, bump VARIANT_F_SHA in engines.lock, drop
- *  the separate g4 worker and remove the wasm-worker entry here (F then answers graph_specs itself). */
-export const GRAPH_FALLBACK: Record<string, string> = { 'wasm-worker': 'wasm-g4-worker', 'wasm-j-worker': 'wasm-g4-worker' };
+/** Backends whose graphs come from another backend's graph RPC while their own engine has none. The mainline F
+ *  (wasm-worker, the default) computes stats and graphs itself (variant-f-features merged the graph layer), so only
+ *  the optional J backend borrows F's graphs. */
+export const GRAPH_FALLBACK: Record<string, string> = { 'wasm-j-worker': 'wasm-worker' };
+
 
 /** GraphRequest per CONTRACT-GRAPHS 0.2: {schema_version, graph, fit, target?, x:{axis, values}, y:[...], params?, settings?} */
 export interface GraphRequest {
@@ -37,13 +38,12 @@ export interface GraphSpecs { contract?: string; graphs: Record<string, { axes?:
 
 const asSpecs = (r: any): GraphSpecs | null => (r && !r.error && r.graphs && typeof r.graphs === 'object' ? r : null);
 
-export interface EngineConfig { backend: string; httpUrl: string; datasetUrl: string; engineUrl: string; wasmUrl: string; g4WasmUrl?: string; jEngineUrl?: string }
+export interface EngineConfig { backend: string; httpUrl: string; datasetUrl: string; engineUrl: string; wasmUrl: string; jEngineUrl?: string }
 
 export const BACKENDS: EngineInfo[] = [
   { id: 'ts-worker', label: 'In-browser: TypeScript engine (variant D) in a Web Worker' },
-  { id: 'wasm-worker', label: 'In-browser: Rust→WASM engine (variant F, data compiled in) in a Web Worker' },
-  { id: 'wasm-g4-worker', label: 'In-browser: variant F + graph RPC (graphs-g4, round-2 prototype) in a Web Worker' },
-  { id: 'wasm-j-worker', label: 'In-browser (optional, speed reference): C++20→WASM engine (variant J) in a Web Worker; graphs via graphs-g4' },
+  { id: 'wasm-worker', label: 'In-browser: Rust→WASM engine (variant F, data compiled in; stats + graphs) in a Web Worker' },
+  { id: 'wasm-j-worker', label: 'In-browser (optional, speed reference): C++20→WASM engine (variant J) in a Web Worker; graphs via F' },
   { id: 'http', label: 'Local/remote HTTP engine (POST {url}/v1/calc, e.g. variant C serve-http)' },
 ];
 
@@ -141,6 +141,7 @@ class GraphSplitEngine implements Engine {
 }
 
 export function createEngine(cfg: EngineConfig): Engine {
+  cfg = { ...cfg, backend: canonicalBackend(cfg.backend) };
   const fb = GRAPH_FALLBACK[cfg.backend];
   if (fb && fb !== cfg.backend) return new GraphSplitEngine(createBase(cfg), () => createBase({ ...cfg, backend: fb }));
   return createBase(cfg);
@@ -152,7 +153,6 @@ function createBase(cfg: EngineConfig): Engine {
     case 'http': return new HttpEngine(info, cfg.httpUrl);
     case 'wasm-worker': return new WorkerEngine(info, { kind: 'wasm', wasmUrl: cfg.wasmUrl });
     case 'wasm-j-worker': return new WorkerEngine(info, { kind: 'emjs', engineUrl: cfg.jEngineUrl ?? cfg.engineUrl.replace('/engines/d/eve-dogma-ts.mjs', '/engines/j/evej.mjs'), datasetUrl: cfg.datasetUrl });
-    case 'wasm-g4-worker': return new WorkerEngine(info, { kind: 'wasm', wasmUrl: cfg.g4WasmUrl ?? cfg.wasmUrl.replace('/engines/f/', '/engines/g4/') });
     default: return new WorkerEngine(info, { kind: 'ts', engineUrl: cfg.engineUrl, datasetUrl: cfg.datasetUrl });
   }
 }

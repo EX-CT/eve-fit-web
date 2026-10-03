@@ -1,18 +1,16 @@
 # Pinned engine sources for the Pages build. One value per line (KEY=value, no spaces). To bump an engine, edit its
 # line and push (the pages workflow reads this file; nothing else needs to change).
 #
-# variant F (eve-dogma-lab, branch variant-f; Rust -> WASM, backend wasm-worker): mainline basis, site default (repo var
-# DEFAULT_ENGINE=wasm-worker); its graphs come from graphs-g4 below (GRAPH_FALLBACK in src/engine/adapter.ts).
-# TODO: when variant-f-features (breacher pod pure damage, void bombs, mutated modules, merged graphs) is merged and passes
-# bench 1.9.0, bump this pin and merge the separate g4 worker into the main worker (drop GRAPHS_G4_SHA / wasm-g4-worker).
-VARIANT_F_SHA=af1c04b50c1ca866de3680ae721bd9ca02497f41
-# variant F + graph layer (eve-dogma-lab, branch graphs-g4; round-2 graphs prototype, backend wasm-g4-worker)
-GRAPHS_G4_SHA=33fd7439edcb1cf63ac09c7107776092261b959b
-# CONTRACT-GRAPHS 0.2 case suite (eve-dogma-bench, branch graphs-round2) run in headless Chrome against wasm-g4-worker
+# Mainline engine F (Rust -> WASM, backend wasm-worker = site default via repo var DEFAULT_ENGINE): stats AND graphs in
+# one worker (variant-f-features merged the graphs-g4 graph layer; bench 1.9.0 331/331, graphs 0.2 178/178).
+# Format: <owner/repo>@<full sha>:<directory>.
+# TODO: when F's bot migrates F to EX-CT/eve-dogma, repoint this line to that repo, e.g. ENGINE_F_SRC=EX-CT/eve-dogma@<sha>:.
+ENGINE_F_SRC=EX-CT/eve-dogma-lab@4b8f5f981c348fab50e0ad8abc44d3eec3b62d5c:variant-f
+# CONTRACT-GRAPHS 0.2 case suite (eve-dogma-bench, branch graphs-round2) run in headless Chrome against wasm-worker (F)
 GRAPHS_BENCH_SHA=8c40921911aed9a7d7f032a2f9d4c43986ca0232
-# Round-1 winner J (C++20 -> WASM with Emscripten, backend wasm-j-worker). Format: <owner/repo>@<full sha>:<directory>.
+# Optional speed reference J (round-1 winner; C++20 -> WASM with Emscripten, backend wasm-j-worker; graphs via F). Format: <owner/repo>@<full sha>:<directory>.
 # When EX-CT/eve-dogma is ready, the move is this one line, e.g. ENGINE_J_SRC=EX-CT/eve-dogma@<sha>:.
 ENGINE_J_SRC=EX-CT/eve-dogma-lab@3ab992d7ed451436725e0597e19307c11863ab40:variant-j
 EMSDK_VERSION=6.0.11
-# Frozen bench 1.8.0 stats corpus (326 cases, eve-dogma-bench 3da9671) run in headless Chrome against the J build
-DOGMA_BENCH_SHA=3da9671da11379de6ae17d3c3285505e95267f29
+# Stats corpus run in headless Chrome against F (gates the deploy) and J (optional): bench 1.9.0 (331 cases, tag v1.9.0)
+DOGMA_BENCH_SHA=d2edf989a7c3ba5afbe54ca6fe85a5a285af8640

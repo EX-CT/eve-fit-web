@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Switch the hosted site's default engine backend in one step (no code change):
-#   tools/switch-default.sh <backend-id>      e.g. wasm-g4-worker | wasm-g1-worker | wasm-worker | ts-worker
+#   tools/switch-default.sh <backend-id>      e.g. wasm-worker | ts-worker | wasm-j-worker
 # Sets the repo variable DEFAULT_ENGINE, dispatches the pages workflow, waits for it, then checks the live
 # build-info.json. Visitors who never picked a backend follow the new default; explicit choices are kept.
 # Needs gh authenticated with repo admin on EX-CT/eve-fit-web (GH_TOKEN). Undo: run it again with ts-worker.
@@ -12,7 +12,6 @@ cd "$(dirname "$0")/.."
 grep -q "id: '$id'" src/engine/adapter.ts || { echo "unknown backend '$id' (not in BACKENDS on this checkout; merge its PR first)"; exit 2; }
 case "$id" in
   wasm-j-worker)  f=engines/j/evej.wasm ;;
-  wasm-g4-worker) f=engines/g4/eve_dogma_f.wasm ;;
   wasm-g1-worker) f=engines/g1/eve_dogma_g1_wasm.wasm ;;
   wasm-worker)    f=engines/f/eve_dogma_f.wasm ;;
   ts-worker)      f=engines/d/eve-dogma-ts.mjs ;;

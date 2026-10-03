@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Run the eve-dogma-bench stats corpus (frozen 1.8.0 set, 326 cases) through an in-browser engine of the site.
+"""Run the eve-dogma-bench stats corpus (cases/*.json of the given bench checkout, e.g. 1.9.0 = 331 cases) through an in-browser engine of the site.
 
   python3 tools/browser-dogma-bench.py <bench-dir> <site-url> <engine-id> [--name N]
 
 All requests go through one headless-Chrome session (tools/browser-rpc.mjs --batch: the page's Engine adapter, Web
 Worker + WASM, i.e. the deployed build). Scoring uses the bench's own run.py (load_cases, score) and metrics.py, so
 values and tolerances are the official ones. bench run.py itself starts one process per case, which for a browser
-would mean 326 Chrome launches; this driver only replaces that transport. Writes <bench-dir>/results/<name>/."""
+would mean one Chrome launch per case; this driver only replaces that transport. Writes <bench-dir>/results/<name>/."""
 import argparse, json, pathlib, subprocess, sys, time
 
 ap = argparse.ArgumentParser()

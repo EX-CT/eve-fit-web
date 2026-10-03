@@ -1,6 +1,6 @@
 name: pages
 # Builds the web UI with the latest EX-CT/eve-sde-pipeline dataset release and the in-browser engines
-# (variant D TypeScript bundle, variant F Rust->WASM, graphs-g4 Rust->WASM pinned in engines.lock), smoke-tests it in headless Chrome, deploys to GitHub Pages.
+# (variant D TypeScript bundle, variant F Rust->WASM, stats + graphs), smoke-tests it in headless Chrome, deploys to GitHub Pages.
 on:
   push:
     branches: [main]
@@ -11,7 +11,7 @@ on:
         required: false
         default: ""
       default_engine:
-        description: "default engine backend (wasm-worker | ts-worker | wasm-g4-worker | wasm-j-worker | http); empty = repo variable DEFAULT_ENGINE or ts-worker"
+        description: "default engine backend (wasm-worker | ts-worker | wasm-j-worker | http); empty = repo variable DEFAULT_ENGINE or ts-worker"
         required: false
         default: ""
   schedule:
@@ -59,28 +59,20 @@ jobs:
           cp lab-d/variant-d/dist-web/eve-dogma-ts.mjs public/engines/d/
           cp lab-d/variant-d/LICENSE public/engines/d/LICENSE 2>/dev/null || cp lab-d/LICENSE public/engines/d/LICENSE 2>/dev/null || true
           echo "ENGINE_D=$(git -C lab-d rev-parse --short HEAD)" >> "$GITHUB_ENV"
-      - name: Engine F (Rust -> WASM, dataset compiled in; engines.lock VARIANT_F_SHA)
+      - name: Engine F (mainline; Rust -> WASM stats + graphs, dataset compiled in; engines.lock ENGINE_F_SRC)
         continue-on-error: true
         run: |
-          git init -q lab-f && git -C lab-f fetch -q --depth 1 https://github.com/EX-CT/eve-dogma-lab "$VARIANT_F_SHA" && git -C lab-f checkout -q FETCH_HEAD
-          rustup target add wasm32-unknown-unknown
-          (cd lab-f/variant-f && EVE_DOGMA_DATASET="$GITHUB_WORKSPACE/public/data/dataset.json.gz" cargo build --lib --profile release-small --target wasm32-unknown-unknown)
-          mkdir -p public/engines/f
-          cp lab-f/variant-f/target/wasm32-unknown-unknown/release-small/eve_dogma_f.wasm public/engines/f/
-          echo "ENGINE_F=$(git -C lab-f rev-parse --short HEAD)" >> "$GITHUB_ENV"
-      - name: Engine F + graph RPC (graphs-g4 @ engines.lock GRAPHS_G4_SHA, round-2 prototype; Rust -> WASM + native)
-        continue-on-error: true
-        run: |
-          git init -q lab-g4 && git -C lab-g4 fetch -q --depth 1 https://github.com/EX-CT/eve-dogma-lab "$GRAPHS_G4_SHA" && git -C lab-g4 checkout -q FETCH_HEAD
+          src=${ENGINE_F_SRC%%@*}; rest=${ENGINE_F_SRC#*@}; sha=${rest%%:*}; dir=${rest#*:}
+          git init -q lab-f && git -C lab-f fetch -q --depth 1 "https://github.com/$src" "$sha" && git -C lab-f checkout -q FETCH_HEAD
           rustup target add wasm32-unknown-unknown
           export EVE_DOGMA_DATASET="$GITHUB_WORKSPACE/public/data/dataset.json.gz"
-          (cd lab-g4/graphs-g4 && cargo build --lib --profile release-small --target wasm32-unknown-unknown)
-          mkdir -p public/engines/g4
-          cp lab-g4/graphs-g4/target/wasm32-unknown-unknown/release-small/eve_dogma_f.wasm public/engines/g4/
-          cp lab-g4/graphs-g4/LICENSE public/engines/g4/LICENSE 2>/dev/null || true
-          echo "ENGINE_G4=$(git -C lab-g4 rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          (cd "lab-f/$dir" && cargo build --lib --profile release-small --target wasm32-unknown-unknown)
+          mkdir -p public/engines/f
+          cp "lab-f/$dir/target/wasm32-unknown-unknown/release-small/eve_dogma_f.wasm" public/engines/f/
+          cp "lab-f/$dir/LICENSE" public/engines/f/LICENSE 2>/dev/null || true
+          { echo "ENGINE_F=$(git -C lab-f rev-parse --short HEAD)"; echo "ENGINE_F_REPO=$src"; echo "ENGINE_F_DIR=${dir#.}"; } >> "$GITHUB_ENV"
           # native serve-stdio build for the http-backend e2e (tools/engine-bridge.mjs); not deployed
-          (cd lab-g4/graphs-g4 && cargo build --release --bin eve-dogma-f) && cp lab-g4/graphs-g4/target/release/eve-dogma-f "$RUNNER_TEMP/eve-dogma-g4"
+          (cd "lab-f/$dir" && cargo build --release --bin eve-dogma-f) && cp "lab-f/$dir/target/release/eve-dogma-f" "$RUNNER_TEMP/eve-dogma-f"
       - name: Engine J (round-1 winner; C++20 -> WASM via Emscripten, engines.lock ENGINE_J_SRC)
         continue-on-error: true
         run: |
@@ -100,15 +92,14 @@ jobs:
           # never deploy a default backend whose engine was not built (its build steps are continue-on-error)
           case "$DEFAULT_ENGINE" in
             wasm-j-worker)  need=public/engines/j/evej.wasm ;;
-            wasm-g4-worker) need=public/engines/g4/eve_dogma_f.wasm ;;
             wasm-worker)    need=public/engines/f/eve_dogma_f.wasm ;;
             *)              need= ;;
           esac
           if [ -n "$need" ] && [ ! -f "$need" ]; then echo "default backend $DEFAULT_ENGINE: $need was not built" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
-          case "$DEFAULT_ENGINE" in wasm-worker|wasm-j-worker) [ -f public/engines/g4/eve_dogma_f.wasm ] || { echo "default backend $DEFAULT_ENGINE needs the graphs engine g4 (GRAPH_FALLBACK), which was not built" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; } ;; esac
+          if [ "$DEFAULT_ENGINE" = wasm-j-worker ] && [ ! -f public/engines/f/eve_dogma_f.wasm ]; then echo "default backend wasm-j-worker needs F for graphs (GRAPH_FALLBACK), which was not built" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
           echo "VITE_DEFAULT_ENGINE=$DEFAULT_ENGINE" >> "$GITHUB_ENV"
-          printf '{"dataset_tag":"%s","engine_d":"%s","engine_f":"%s","engine_g4":"%s","engine_j":"%s","engine_j_repo":"%s","engine_j_dir":"%s","web":"%s","built_at":"%s","default_engine":"%s","run":"%s"}\n' \
-            "$DATASET_TAG" "${ENGINE_D:-}" "${ENGINE_F:-}" "${ENGINE_G4:-}" "${ENGINE_J:-}" "${ENGINE_J_REPO:-}" "${ENGINE_J_DIR:-}" "${GITHUB_SHA::7}" "$(date -u +%FT%TZ)" "$DEFAULT_ENGINE" \
+          printf '{"dataset_tag":"%s","engine_d":"%s","engine_f":"%s","engine_f_repo":"%s","engine_f_dir":"%s","engine_j":"%s","engine_j_repo":"%s","engine_j_dir":"%s","web":"%s","built_at":"%s","default_engine":"%s","run":"%s"}\n' \
+            "$DATASET_TAG" "${ENGINE_D:-}" "${ENGINE_F:-}" "${ENGINE_F_REPO:-}" "${ENGINE_F_DIR:-}" "${ENGINE_J:-}" "${ENGINE_J_REPO:-}" "${ENGINE_J_DIR:-}" "${GITHUB_SHA::7}" "$(date -u +%FT%TZ)" "$DEFAULT_ENGINE" \
             "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > public/build-info.json
           cat public/build-info.json
       - run: npm run build
@@ -124,37 +115,32 @@ jobs:
             if [ "$DEFAULT_ENGINE" = wasm-worker ]; then node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY"
             else node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "wasm backend e2e failed" >> "$GITHUB_STEP_SUMMARY"; fi
           fi
-          if [ -f public/engines/g4/eve_dogma_f.wasm ]; then
-            case "$DEFAULT_ENGINE" in wasm-worker|wasm-g4-worker) node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-g4-worker | tee -a "$GITHUB_STEP_SUMMARY" ;;
-              *) node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-g4-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "graphs-g4 backend e2e failed" >> "$GITHUB_STEP_SUMMARY" ;; esac
-          fi
           if [ -f public/engines/j/evej.wasm ]; then
             if [ "$DEFAULT_ENGINE" = wasm-j-worker ]; then node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-j-worker | tee -a "$GITHUB_STEP_SUMMARY"
             else node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-j-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "J backend e2e failed" >> "$GITHUB_STEP_SUMMARY"; fi
           fi
-          if [ -x "$RUNNER_TEMP/eve-dogma-g4" ]; then
-            node tools/engine-bridge.mjs --stdio "$RUNNER_TEMP/eve-dogma-g4 serve-stdio" --port 8787 &
+          if [ -x "$RUNNER_TEMP/eve-dogma-f" ]; then
+            node tools/engine-bridge.mjs --stdio "$RUNNER_TEMP/eve-dogma-f serve-stdio" --port 8787 &
             for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:8787/healthz && break; sleep 1; done
             node tools/e2e.mjs "http://127.0.0.1:4173/eve-fit-web/?http=http://127.0.0.1:8787" http | tee -a "$GITHUB_STEP_SUMMARY" || echo "http backend e2e failed" >> "$GITHUB_STEP_SUMMARY"
           fi
         env: { CHROME: /usr/bin/google-chrome }
-      - name: Graphs 0.2 case suite in the browser build (wasm-g4-worker, eve-dogma-bench @ engines.lock GRAPHS_BENCH_SHA)
-        if: hashFiles('public/engines/g4/eve_dogma_f.wasm') != ''
-        continue-on-error: true
+      - name: Graphs 0.2 case suite in the browser build (wasm-worker = F, eve-dogma-bench @ engines.lock GRAPHS_BENCH_SHA)
+        if: hashFiles('public/engines/f/eve_dogma_f.wasm') != ''
         run: |
           git init -q bench && git -C bench fetch -q --depth 1 https://github.com/EX-CT/eve-dogma-bench "$GRAPHS_BENCH_SHA" && git -C bench checkout -q FETCH_HEAD
           npx vite preview --host 127.0.0.1 --port 4174 --strictPort &
           for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:4174/eve-fit-web/ && break; sleep 1; done
-          python3 bench/graphs/run_graphs.py --name web-g4-browser --rpc-cmd "node $GITHUB_WORKSPACE/tools/browser-rpc.mjs http://127.0.0.1:4174/eve-fit-web/ wasm-g4-worker" | tee -a "$GITHUB_STEP_SUMMARY"
-          python3 -c "import json,sys; c=json.load(open('bench/results/graphs-web-g4-browser/scorecard.json')); print(f\"browser graphs suite: {c['cases_fully_correct']}/{c['cases']} cases, {c['values_correct']}/{c['values_total']} values\"); sys.exit(c['cases_fully_correct'] != c['cases'])"
+          python3 bench/graphs/run_graphs.py --name web-f-browser --rpc-cmd "node $GITHUB_WORKSPACE/tools/browser-rpc.mjs http://127.0.0.1:4174/eve-fit-web/ wasm-worker" | tee -a "$GITHUB_STEP_SUMMARY"
+          python3 -c "import json,sys; c=json.load(open('bench/results/graphs-web-f-browser/scorecard.json')); print(f\"browser graphs suite: {c['cases_fully_correct']}/{c['cases']} cases, {c['values_correct']}/{c['values_total']} values\"); sys.exit(c['cases_fully_correct'] != c['cases'])"
         env: { CHROME: /usr/bin/google-chrome }
-      - name: Dogma bench 1.8.0 (326 cases) in the browser build (wasm-worker = F, wasm-j-worker = J; eve-dogma-bench @ engines.lock DOGMA_BENCH_SHA)
+      - name: Dogma bench 1.9.0 (331 cases) in the browser build (wasm-worker = F gates the deploy, wasm-j-worker = J optional; eve-dogma-bench @ engines.lock DOGMA_BENCH_SHA)
         run: |
-          git init -q bench180 && git -C bench180 fetch -q --depth 1 https://github.com/EX-CT/eve-dogma-bench "$DOGMA_BENCH_SHA" && git -C bench180 checkout -q FETCH_HEAD
+          git init -q benchstats && git -C benchstats fetch -q --depth 1 https://github.com/EX-CT/eve-dogma-bench "$DOGMA_BENCH_SHA" && git -C benchstats checkout -q FETCH_HEAD
           npx vite preview --host 127.0.0.1 --port 4175 --strictPort &
           for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:4175/eve-fit-web/ && break; sleep 1; done
-          if [ -f public/engines/f/eve_dogma_f.wasm ]; then python3 tools/browser-dogma-bench.py bench180 http://127.0.0.1:4175/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY"; fi
-          if [ -f public/engines/j/evej.wasm ]; then python3 tools/browser-dogma-bench.py bench180 http://127.0.0.1:4175/eve-fit-web/ wasm-j-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "J browser bench failed (optional engine)" >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f public/engines/f/eve_dogma_f.wasm ]; then python3 tools/browser-dogma-bench.py benchstats http://127.0.0.1:4175/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f public/engines/j/evej.wasm ]; then python3 tools/browser-dogma-bench.py benchstats http://127.0.0.1:4175/eve-fit-web/ wasm-j-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "J browser bench failed (optional engine)" >> "$GITHUB_STEP_SUMMARY"; fi
         shell: bash -eo pipefail {0}
         env: { CHROME: /usr/bin/google-chrome }
       - uses: actions/upload-pages-artifact@v3

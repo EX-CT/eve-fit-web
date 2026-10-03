@@ -8,7 +8,7 @@ import puppeteer from 'puppeteer-core';
 import readline from 'node:readline';
 
 const url = process.argv[2] ?? 'http://127.0.0.1:4173/eve-fit-web/';
-const engine = process.argv[3] ?? 'wasm-g4-worker';
+const engine = process.argv[3] ?? 'wasm-worker';
 const batch = process.argv.includes('--batch');
 const b = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
 try {
