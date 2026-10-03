@@ -80,7 +80,7 @@ export default function App() {
     engineRef.current = eng;
     setEngineStatus(`starting ${eng.info.id}…`);
     let alive = true;
-    eng.init().then((s) => { if (alive) { setEngineStatus(`✔ ${s}`); setEngineReady((n) => n + 1); } }, (e) => alive && setEngineStatus(`✖ ${eng.info.id}: ${e.message}`));
+    eng.init().then((s) => { if (alive) { setEngineStatus(`✔ ${s}`); setEngineReady((n) => n + 1); (window as any).__eveEngine = eng; } }, (e) => alive && setEngineStatus(`✖ ${eng.info.id}: ${e.message}`));
     return () => { alive = false; eng.dispose(); };
   }, [ecfg.backend, ecfg.httpUrl, ecfg.datasetUrl, ecfg.engineUrl, ecfg.wasmUrl]);
 

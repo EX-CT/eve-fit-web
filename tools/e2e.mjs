@@ -1,5 +1,5 @@
 // End-to-end check of the main UI flows against a running site (any engine backend):
-//   node tools/e2e.mjs <url> [engine-id]
+//   node tools/e2e.mjs <url> [engine-id]      (url may carry a query, e.g. ...?http=http://127.0.0.1:8787 for engine http)
 import puppeteer from 'puppeteer-core';
 
 const url = process.argv[2] ?? 'http://127.0.0.1:4173/eve-fit-web/';
@@ -53,8 +53,12 @@ const stats = () => p.evaluate(() => window.__lastStats);
 const waitNew = async (prev) => { await p.waitForFunction((pr) => window.__lastStats && JSON.stringify(window.__lastStats) !== pr, { timeout: 60000 }, JSON.stringify(prev)); return stats(); };
 const clickText = (sel, text) => p.evaluate((s, t) => { const el = [...document.querySelectorAll(s)].find((e) => e.textContent.trim().startsWith(t)); if (!el) return false; el.click(); return true; }, sel, text);
 
-await p.goto(`${url}?engine=${engine}&eft=${encodeURIComponent(EFT)}`, { waitUntil: 'networkidle0', timeout: 120000 });
+const sep = url.includes("?") ? "&" : "?";
+await p.goto(`${url}${sep}engine=${engine}&eft=${encodeURIComponent(EFT)}`, { waitUntil: 'networkidle0', timeout: 120000 });
 await p.waitForFunction(() => window.__lastStats?.offense, { timeout: 120000 });
+// The page must run the backend under test (a malformed URL used to fall back to the default backend silently).
+const active = await p.evaluate(() => window.__eveEngine?.info?.id);
+if (active !== engine) { console.log(`FAIL  active backend  — wanted ${engine}, page runs ${active}`); await b.close(); process.exit(1); }
 let s = await stats();
 check('EFT import via ?eft=, ship', s.ship?.name === 'Vexor', s.ship?.name);
 check('drones dps', s.offense?.total?.drone_dps > 0, s.offense?.total?.drone_dps);
@@ -93,7 +97,9 @@ check('environment beacon applied', s.meta && (await p.evaluate(() => document.b
 // graphs
 await clickText('.center .tabs button', 'Graphs');
 // Backends with the graph RPC (CONTRACT-GRAPHS 0.2) must render engine-computed series; the others the UI approximation.
-const GRAPH_RPC = ['wasm-g4-worker'].includes(engine) || process.env.E2E_GRAPH_RPC === '1';
+// E2E_GRAPH_RPC=1/0 forces it; otherwise wasm-g4-worker has it, and an http engine has it if it answers graph_specs.
+const GRAPH_RPC = process.env.E2E_GRAPH_RPC ? process.env.E2E_GRAPH_RPC === '1'
+  : engine === 'wasm-g4-worker' || (engine === 'http' && (await p.evaluate(async () => !!(await window.__eveEngine?.graphSpecs?.()))));
 const kinds = ['dps', 'cap', 'regen', 'mobility', 'lock', 'warp', ...(GRAPH_RPC ? ['app', 'ewar', 'rr'] : [])];
 if (GRAPH_RPC) await p.waitForFunction(() => document.querySelector('.graphs select option[value="app"]'), { timeout: 30000 }).catch(() => {});
 const offered = await p.evaluate(() => [...document.querySelectorAll('.graphs select option')].map((o) => o.value));
@@ -207,7 +213,7 @@ s = await waitNew(s);
 check('custom character (all 0) lowers dps', s.offense.total.dps.total < d5, `${d5} -> ${s.offense.total.dps.total}`);
 check('missing skills reported', (s.violations ?? []).some((v) => v.code === 'MISSING_SKILL'));
 // per-module spool-up (Triglavian disintegrator)
-await p.goto(`${url}?engine=${engine}&eft=${encodeURIComponent('[Vedmak, E2E Vedmak]\n\nHeavy Entropic Disintegrator II, Baryon Exotic Plasma M\n')}`, { waitUntil: 'networkidle0', timeout: 120000 });
+await p.goto(`${url}${sep}engine=${engine}&eft=${encodeURIComponent('[Vedmak, E2E Vedmak]\n\nHeavy Entropic Disintegrator II, Baryon Exotic Plasma M\n')}`, { waitUntil: 'networkidle0', timeout: 120000 });
 await p.waitForFunction(() => window.__lastStats?.ship?.name === 'Vedmak', { timeout: 120000 });
 s = await stats();
 const sp1 = s.offense?.total?.weapon_dps;
@@ -242,7 +248,7 @@ const price = await p.waitForFunction(() => document.querySelector('.pricetotal'
 check('fit price from ESI', /ISK$/.test(price) || /ESI|fetch|timeout/i.test(price), price);
 
 // fighters: abilities
-await p.goto(`${url}?engine=${engine}&eft=${encodeURIComponent(CARRIER)}`, { waitUntil: 'networkidle0', timeout: 120000 });
+await p.goto(`${url}${sep}engine=${engine}&eft=${encodeURIComponent(CARRIER)}`, { waitUntil: 'networkidle0', timeout: 120000 });
 await p.waitForFunction(() => window.__lastStats?.ship?.name === 'Thanatos', { timeout: 120000 });
 s = await stats();
 const f0 = s.offense?.total?.fighter_dps ?? s.offense?.total?.drone_dps;
