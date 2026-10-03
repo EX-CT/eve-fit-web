@@ -3,7 +3,7 @@ import { t } from '../i18n';
 const tr = t;
 import type { InfoCtx } from './Market';
 import type { Dataset, Slot } from '../data/dataset';
-import type { Fit, FitModule, Library, ModState } from '../fit/model';
+import { moveModule, type Fit, type FitModule, type Library, type ModState } from '../fit/model';
 import type { FitStats } from '../engine/adapter';
 import { Tabs } from './common';
 import { applyImplantSet, saveUserImplantSets, useSdePresets, userImplantSets, type ImplantSet } from '../data/sdePresets';
@@ -24,6 +24,13 @@ function slotTotal(ds: Dataset, fit: Fit, stats: FitStats | null, s: Slot): numb
   return ds.attr(fit.ship_type_id, attr) ?? 0;
 }
 
+/** index of the module being dragged (rack position change, Pyfa drag and drop) */
+let dragFrom: number | null = null;
+const dropProps = (fit: Fit, slot: Slot, to: number | null, onChange: (f: Fit) => void) => ({
+  onDragOver: (e: React.DragEvent) => { if (dragFrom != null && fit.modules[dragFrom]?.slot === slot) e.preventDefault(); },
+  onDrop: (e: React.DragEvent) => { e.preventDefault(); if (dragFrom != null) onChange(moveModule(fit, dragFrom, to)); dragFrom = null; },
+});
+
 function ModuleRow({ ds, m, idx, fit, stats, onChange, onInfo }: { ds: Dataset; m: FitModule; idx: number } & FitProps) {
   const charges = ds.chargesFor(m.type_id);
   const mutas = ds.mutaplasmidsFor(m.mutation?.base_type_id ?? m.type_id);
@@ -40,7 +47,9 @@ function ModuleRow({ ds, m, idx, fit, stats, onChange, onInfo }: { ds: Dataset; 
   const viol = (stats?.violations ?? []).filter((v: any) => v.module_index === idx);
   const muta = m.mutation ? ds.raw.mutaplasmids?.[m.mutation.mutaplasmid_type_id] : null;
   return (
-    <div className={'mod' + (viol.length ? ' bad' : '')} title={viol.map((v: any) => v.message).join('\n')}>
+    <div className={'mod' + (viol.length ? ' bad' : '')} title={viol.map((v: any) => v.message).join('\n')} data-idx={idx}
+      draggable onDragStart={(e) => { dragFrom = idx; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(idx)); }} onDragEnd={() => { dragFrom = null; }}
+      {...dropProps(fit, m.slot, idx, onChange)}>
       <button className={'state s-' + m.state} onClick={() => cycle(1)} onContextMenu={(e) => { e.preventDefault(); cycle(-1); }} title={`${t(m.state)} (${t('click: next, right-click: previous')})`}>{STATE_ICON[m.state]}</button>
       <span className="mname" onClick={() => onInfo(m.type_id, { module: idx })}>{ds.name(m.type_id)}{m.mutation ? ' ✦' : ''}</span>
       {charges.length > 0 && (
@@ -81,6 +90,7 @@ function ModuleRow({ ds, m, idx, fit, stats, onChange, onInfo }: { ds: Dataset; 
                 <input type="range" min={0} max={1000} value={baseV ? Math.round(((cur / baseV - lo) / (hi - lo)) * 1000) : 500}
                   onChange={(e) => { const f = lo + ((hi - lo) * +e.target.value) / 1000; set({ mutation: { ...m.mutation!, attributes: { ...m.mutation!.attributes, [a]: baseV * f } } }); }} />
                 <span className="num">{+cur.toFixed(3)}</span>
+                <span className="mrange muted" data-attr={a} data-lo={baseV * lo} data-hi={baseV * hi} title={t('roll range of the mutaplasmid')}>{+(baseV * Math.min(lo, hi)).toFixed(3)} … {+(baseV * Math.max(lo, hi)).toFixed(3)}</span>
               </label>
             );
           })}
@@ -271,7 +281,7 @@ export function Fitting(p: FitProps & { addProjected: boolean; setAddProjected: 
               <div className="slotgroup" key={s}>
                 <h4>{t(label)} <span className="muted">{mods.length}/{total}</span></h4>
                 {mods.map(([m, i]) => <ModuleRow key={i} {...p} m={m} idx={i} />)}
-                {Array.from({ length: Math.max(0, total - mods.length) }, (_, i) => <div key={'e' + i} className="mod empty">{t(`[empty ${s} slot]`)}</div>)}
+                {Array.from({ length: Math.max(0, total - mods.length) }, (_, i) => <div key={'e' + i} className="mod empty" {...dropProps(fit, s, null, onChange)}>{t(`[empty ${s} slot]`)}</div>)}
               </div>
             );
           })}

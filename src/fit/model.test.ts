@@ -38,3 +38,21 @@ describe('fit/model toRequest', () => {
     expect((toRequest(f, lib()) as any).projected).toEqual([]);
   });
 });
+
+describe('fit/model moveModule', () => {
+  const mods = (f: ReturnType<typeof newFit>) => f.modules.map((m) => `${m.slot}:${m.type_id}`);
+  const fit = () => ({ ...newFit(587), modules: [
+    { type_id: 1, slot: 'high' as const, state: 'active' as const, charge_type_id: null },
+    { type_id: 2, slot: 'mid' as const, state: 'active' as const, charge_type_id: null },
+    { type_id: 3, slot: 'high' as const, state: 'active' as const, charge_type_id: null },
+    { type_id: 4, slot: 'high' as const, state: 'active' as const, charge_type_id: null },
+    { type_id: 5, slot: 'low' as const, state: 'active' as const, charge_type_id: null },
+  ] });
+  it('web.unit.module-move: rack position swap and move to the end of the rack; other racks and other slots untouched', async () => {
+    const { moveModule } = await import('./model');
+    expect(mods(moveModule(fit(), 0, 3))).toEqual(['high:4', 'mid:2', 'high:3', 'high:1', 'low:5']);
+    expect(mods(moveModule(fit(), 0, null))).toEqual(['mid:2', 'high:3', 'high:4', 'high:1', 'low:5']);
+    expect(mods(moveModule(fit(), 0, 1))).toEqual(mods(fit())); // another rack: no change
+    expect(moveModule(fit(), 2, 2).modules).toHaveLength(5);
+  });
+});

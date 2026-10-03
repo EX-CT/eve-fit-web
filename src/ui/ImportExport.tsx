@@ -51,6 +51,7 @@ export function ImportExport({ ds, fit, lib, stats, calc, onImport, onClose }: {
         <textarea className="eft" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('Paste a fit (EFT, DNA, ESI JSON, EVE XML, EFT config …) and press Import.')} />
         <div className="row">
           <button onClick={() => doImport(text)} disabled={!text.trim()}>{t('Import')}</button>
+          <button className="paste-clipboard" title={t('Read a fit from the clipboard and import it')} onClick={() => navigator.clipboard?.readText().then((c) => { setText(c); if (c.trim()) doImport(c); else setMsg(t('the clipboard is empty')); }, () => setMsg(t('clipboard not readable: paste into the box above')))}>{t('Import from clipboard')}</button>
           <label className="filebtn">{t('Import file…')} <input type="file" className="importfile" accept=".xml,.cfg,.txt,.json,.eft,.db" onChange={(e) => onFile(e.target.files?.[0])} /></label>
           {EXPORTS.filter(([f]) => fm.exportFormats.includes(f)).map(([f, l]) => <button key={f} className={`export-${f}`} disabled={!fit} onClick={() => doExport(f)}>{t(l)}</button>)}
           <button disabled={!fit} onClick={() => fit && show(`${location.origin}${location.pathname}?dna=${encodeURIComponent(exportFit(ds, fit, lib, 'dna'))}`)}>{t('Share link')}</button>

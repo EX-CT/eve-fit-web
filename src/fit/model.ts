@@ -99,3 +99,23 @@ export function toRequest(fit: Fit, lib: Library, depth = 0): Record<string, unk
     },
   };
 }
+
+/** Rack position (Pyfa: drag a module onto another slot of the same rack): the module at `from` takes the place of the
+ *  module at `to` and they swap; `to` = null moves it to the end of its rack. Positions in other racks are unchanged.
+ *  The order inside a rack is the slot order the engine sees (it matters for overheat damage). */
+export function moveModule(fit: Fit, from: number, to: number | null): Fit {
+  const a = fit.modules[from];
+  if (!a || from === to) return fit;
+  if (to == null) {
+    const rest = fit.modules.filter((_, i) => i !== from);
+    let last = -1;
+    rest.forEach((m, i) => { if (m.slot === a.slot) last = i; });
+    const at = last < 0 ? rest.length : last + 1;
+    return { ...fit, modules: [...rest.slice(0, at), a, ...rest.slice(at)] };
+  }
+  const b = fit.modules[to];
+  if (!b || b.slot !== a.slot) return fit;
+  const modules = fit.modules.slice();
+  modules[from] = b; modules[to] = a;
+  return { ...fit, modules };
+}

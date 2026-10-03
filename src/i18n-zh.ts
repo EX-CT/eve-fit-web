@@ -165,4 +165,10 @@ export const ZH: Record<string, string> = {
   'Shield': '护盾',
   'Armor': '装甲',
   'Hull': '结构',
+  // rack position, mutation range, clipboard import
+  'roll range of the mutaplasmid': '突变质体的随机范围',
+  'Read a fit from the clipboard and import it': '从剪贴板读取装配并导入',
+  'the clipboard is empty': '剪贴板为空',
+  'clipboard not readable: paste into the box above': '无法读取剪贴板：请粘贴到上方文本框',
+  'Import from clipboard': '从剪贴板导入',
 };
