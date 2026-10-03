@@ -1,0 +1,8 @@
+[package]
+name = "mimalloc"
+version = "0.1.999"
+edition = "2021"
+license = "MIT"
+publish = false
+[features]
+default = []

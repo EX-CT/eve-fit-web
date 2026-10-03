@@ -1,0 +1,33 @@
+# Browser (wasm32-unknown-unknown) wrapper around eve-dogma-lab graphs-g1 (variant-e, Pyfa-faithful Rust port + graphs).
+# Built in CI from the commit pinned in ../../engines.lock (GRAPHS_G1_SHA), checked out at ../../lab-g1.
+# License: GPL-3.0-or-later, because it links variant-e (GPL-3.0-or-later). It is a separate program loaded by the MIT
+# site in a Web Worker; see LICENSE.
+[package]
+name = "eve-dogma-g1-wasm"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+eve-dogma-e = { path = "../../lab-g1/variant-e" }
+serde = "1"
+serde_json = { version = "1", features = ["float_roundtrip"] }
+flate2 = "1"
+
+# variant-e's binary uses mimalloc (C, does not build for wasm32); its library does not. Stub it out.
+[patch.crates-io]
+mimalloc = { path = "mimalloc-stub" }
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[workspace]
