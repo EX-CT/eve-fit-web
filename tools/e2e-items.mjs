@@ -79,6 +79,6 @@ export async function itemChecks({ p, url, sep, engine, check, stats, waitNew, c
   const labels = await p.evaluate(() => [...document.querySelectorAll('.stats ul.viol li[data-code] b')].map((x) => x.textContent));
   const want = ['POWER_OVERLOAD', 'SLOTS_EXCEEDED', 'TURRET_HARDPOINTS', 'RIG_SIZE', 'SHIP_RESTRICTION'];
   check('web.e2e.validation-problems: engine violations (capital module on a frigate, slots, turrets, rig size, powergrid) are listed in Problems with their labels',
-    (PRECISE ? want.every((c) => ui.includes(c) && codes(s).includes(c)) : JSON.stringify(ui) === JSON.stringify(codes(s))) && labels.length > 0 && !labels.some((l) => /^[A-Z_]+$/.test(l)),
+    (EXT ? want.every((c) => ui.includes(c) && codes(s).includes(c)) : JSON.stringify(ui) === JSON.stringify(codes(s))) && labels.length > 0 && !labels.some((l) => /^[A-Z_]+$/.test(l)),
     `ui ${ui.join(',')}; engine ${codes(s).join(',')}; modules ${(s.modules ?? []).map((m) => `${m.slot}:${m.name}`).join(', ')}`);
 }
