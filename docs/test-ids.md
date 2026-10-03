@@ -91,6 +91,11 @@ used before the ids were added (2026-10-03):
 | `web.e2e.my-prices-editor` | (new) a category multiplier from the "my prices" editor scales the ship price |
 | `web.e2e.price-reset` | (new) clearing my prices and "update prices" returns to the embedded snapshot |
 | `web.e2e.price-unsupported` | (new) backends without the engine price block (ts-worker, J) say so |
+| `web.e2e.show-info-engine-values` | (new) every fitted value in show info equals the engine attribute value (independent include_attributes=all calc) |
+| `web.e2e.show-info-skill-formula` | (new) fitted damage multiplier and rate of fire of Heavy Neutron Blaster II match the all-V skill formula |
+| `web.e2e.builtin-damage-exact` | (new) the built-in damage patterns are exactly Uniform, EM, Thermal, Kinetic, Explosive |
+| `web.e2e.pyfa-damage-patterns` | (new) Pyfa built-in damage patterns (opt-in) with Pyfa values: [NPC][Asteroid]Guristas 0 / 19.8 / 80.2 / 0 |
+| `web.e2e.pyfa-damage-pattern-applied` | (new) the selected Pyfa pattern is sent to the engine and changes EHP |
 | `web.e2e.zh-ui` | zh-CN UI (tabs, stats sections, slots, import/export dialog) has no untranslated labels |
 
 ## Unit tests (`npm test`, vitest)
@@ -115,6 +120,7 @@ built from the engines.lock pin (`REQUIRE_FORMATS_WASM=1`: the WASM formats test
 | `web.unit.my-prices-validation` | `src/data/prices.test.ts` | docs/23 override shape: one target, one of price / multiplier, values >= 0 |
 | `web.unit.my-prices-storage` | `src/data/prices.test.ts` | my prices and the update toggle round-trip through localStorage; invalid entries dropped |
 | `web.unit.price-snapshot-parse` | `src/data/prices.test.ts` | eve-price-snapshot v1, gzip or plain; other files rejected |
+| `web.unit.pyfa-presets-map` | `src/data/pyfaPresets.test.ts` | Pyfa ratios become percent shares (0.1 % steps) with pyfa: ids; other files rejected |
 | `web.unit.formats-wasm-active` | `src/formats/wasm.test.ts` | the formats layer uses the WASM module once loaded |
 | `web.unit.formats-wasm-dna-esi` | `src/formats/wasm.test.ts` | DNA and ESI JSON exports |
 | `web.unit.formats-wasm-eft-export` | `src/formats/wasm.test.ts` | Pyfa EFT export of the structured request, round trip |
