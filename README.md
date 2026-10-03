@@ -108,8 +108,12 @@ cp target/wasm32-unknown-unknown/release-small/{eve_wasm,eve_fit_formats_wasm}.w
 * Test ids: unit tests are named `web.unit.<slug>: …`, e2e checks `web.e2e.<slug>: …`; [docs/test-ids.md](docs/test-ids.md)
   maps the e2e ids to the names used before.
 * CI (`pages.yml`) gates the deploy on engine F and the formats module building, the unit tests, the e2e on
-  ts-worker and wasm-worker (F), the bench 1.9.0 corpus (331 cases), the graphs 0.2 suite (178 cases), the bench ext suite (202 cases: stats-ext, heat,
-  validity, overrides, ...) and the effects suite (at least 2353/2378) in the browser build.
+  ts-worker and wasm-worker (F), the bench 1.9.0 corpus (331 cases), the graphs 0.2 suite (178 cases), and the full eve-dogma-bench `pending-1.11` suite set
+  (`BENCH_SUITES_SHA`; `tools/run_all_suites.sh tools/browser-engine.mjs`: core, ext, ext_rpc, batch, effects, graphs,
+  cap, mutated, formats) in the browser build, gated by `check_no_regress.py --baseline baselines/f.json`; the per-suite
+  results are the run artifact `bench-suites-wasm-worker`. `tools/browser-engine.mjs` is an `eve-fit`-compatible CLI
+  (`calc`, `batch`, `serve-stdio`) backed by the site in headless Chrome (`BROWSER_RPC=<url>` reuses a
+  `tools/browser-rpc.mjs --http PORT` server).
 
 ## Licence
 - UI code: MIT.
