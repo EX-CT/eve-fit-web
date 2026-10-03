@@ -10,7 +10,7 @@
 # 1.10 stats-ext outputs: mining, outgoing (remote reps / cap transfer), bombing, drones/fighters items[] (EHP),
 # modules[].heat (burnout), the 2da8150 validation codes (capital modules on subcaps, MISSING_SKILL per skill), RPC optimize.
 # Format: <owner/repo>@<full sha>:<directory of the Cargo workspace>.
-ENGINE_F_SRC=EX-CT/eve-dogma@197223f2837b9f42648b5afedc1a4e6a7feb2d06:.
+ENGINE_F_SRC=EX-CT/eve-dogma@8bde0ba83c19c31267c88ae1b572b2baab2f3b0b:.
 # CONTRACT-GRAPHS 0.2 case suite (eve-dogma-bench, branch graphs-round2) run in headless Chrome against wasm-worker (F)
 GRAPHS_BENCH_SHA=8c40921911aed9a7d7f032a2f9d4c43986ca0232
 # Optional speed reference J (round-1 winner; C++20 -> WASM with Emscripten, backend wasm-j-worker; graphs via F). Format: <owner/repo>@<full sha>:<directory>.
