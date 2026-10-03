@@ -11,7 +11,7 @@ on:
         required: false
         default: ""
       default_engine:
-        description: "default engine backend (ts-worker | wasm-worker | wasm-g4-worker | http); empty = repo variable DEFAULT_ENGINE or ts-worker"
+        description: "default engine backend (wasm-worker | ts-worker | wasm-g4-worker | wasm-j-worker | http); empty = repo variable DEFAULT_ENGINE or ts-worker"
         required: false
         default: ""
   schedule:
@@ -105,7 +105,7 @@ jobs:
             *)              need= ;;
           esac
           if [ -n "$need" ] && [ ! -f "$need" ]; then echo "default backend $DEFAULT_ENGINE: $need was not built" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
-          if [ "$DEFAULT_ENGINE" = wasm-j-worker ] && [ ! -f public/engines/g4/eve_dogma_f.wasm ]; then echo "::warning::graphs fallback engine g4 missing; graphs use UI approximations"; fi
+          case "$DEFAULT_ENGINE" in wasm-worker|wasm-j-worker) [ -f public/engines/g4/eve_dogma_f.wasm ] || { echo "default backend $DEFAULT_ENGINE needs the graphs engine g4 (GRAPH_FALLBACK), which was not built" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; } ;; esac
           echo "VITE_DEFAULT_ENGINE=$DEFAULT_ENGINE" >> "$GITHUB_ENV"
           printf '{"dataset_tag":"%s","engine_d":"%s","engine_f":"%s","engine_g4":"%s","engine_j":"%s","engine_j_repo":"%s","engine_j_dir":"%s","web":"%s","built_at":"%s","default_engine":"%s","run":"%s"}\n' \
             "$DATASET_TAG" "${ENGINE_D:-}" "${ENGINE_F:-}" "${ENGINE_G4:-}" "${ENGINE_J:-}" "${ENGINE_J_REPO:-}" "${ENGINE_J_DIR:-}" "${GITHUB_SHA::7}" "$(date -u +%FT%TZ)" "$DEFAULT_ENGINE" \
@@ -120,8 +120,14 @@ jobs:
           node tools/smoke.mjs http://127.0.0.1:4173/eve-fit-web/ ts-worker | tee -a "$GITHUB_STEP_SUMMARY"
           if [ -f public/engines/f/eve_dogma_f.wasm ]; then node tools/smoke.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "wasm backend smoke failed" >> "$GITHUB_STEP_SUMMARY"; fi
           node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ ts-worker | tee -a "$GITHUB_STEP_SUMMARY"
-          if [ -f public/engines/f/eve_dogma_f.wasm ]; then node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "wasm backend e2e failed" >> "$GITHUB_STEP_SUMMARY"; fi
-          if [ -f public/engines/g4/eve_dogma_f.wasm ]; then node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-g4-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "graphs-g4 backend e2e failed" >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f public/engines/f/eve_dogma_f.wasm ]; then
+            if [ "$DEFAULT_ENGINE" = wasm-worker ]; then node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY"
+            else node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "wasm backend e2e failed" >> "$GITHUB_STEP_SUMMARY"; fi
+          fi
+          if [ -f public/engines/g4/eve_dogma_f.wasm ]; then
+            case "$DEFAULT_ENGINE" in wasm-worker|wasm-g4-worker) node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-g4-worker | tee -a "$GITHUB_STEP_SUMMARY" ;;
+              *) node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-g4-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "graphs-g4 backend e2e failed" >> "$GITHUB_STEP_SUMMARY" ;; esac
+          fi
           if [ -f public/engines/j/evej.wasm ]; then
             if [ "$DEFAULT_ENGINE" = wasm-j-worker ]; then node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-j-worker | tee -a "$GITHUB_STEP_SUMMARY"
             else node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-j-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "J backend e2e failed" >> "$GITHUB_STEP_SUMMARY"; fi

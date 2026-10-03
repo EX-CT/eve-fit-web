@@ -44,13 +44,13 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
 ## Engine adapter (`src/engine/adapter.ts`)
 | backend | where it runs | notes |
 |---|---|---|
-| `ts-worker` | browser (Web Worker) | variant D TypeScript bundle, built in CI from `EX-CT/eve-dogma-lab@variant-d`. It loads the same release dataset |
-| `wasm-worker` | browser (Web Worker) | variant F Rust→WASM (C-ABI `calc`), built in CI with the release dataset compiled in |
-| `wasm-j-worker` | browser (Web Worker) | **optional** speed-reference engine: variant J (round-1 winner; the mainline is Rust based on F; C++20 → WASM with Emscripten, LGPL-3.0-or-later), built in CI from `ENGINE_J_SRC` in [`engines.lock`](engines.lock) (`owner/repo@sha:dir`; moving to EX-CT/eve-dogma is a one-line change). The worker writes the release dataset into the module's virtual FS. J has no graph RPC, so its graphs come from `wasm-g4-worker` (`GRAPH_FALLBACK` in `src/engine/adapter.ts`, one line) until the round-2 winner is in; the Graphs label and the About tab say which backend computed them. CI runs the frozen bench 1.8.0 stats corpus (326 cases) in headless Chrome against this build and against F's `wasm-worker` (`tools/browser-dogma-bench.py`) |
-| `wasm-g4-worker` | browser (Web Worker) | **round-2 prototype**: eve-dogma-lab `graphs-g4` (variant F plus a graph layer, 178/178 on CONTRACT-GRAPHS 0.2), WASM `calc` + `rpc` (`graph`, `graph_specs`). Built in CI from the commit pinned in [`engines.lock`](engines.lock) (`GRAPHS_G4_SHA`; bump = edit that line and push). The final graph engine waits for the round-2 winner |
+| `ts-worker` | browser (Web Worker) | **fallback**: variant D TypeScript bundle, built in CI from `EX-CT/eve-dogma-lab@variant-d`. It loads the same release dataset |
+| `wasm-worker` | browser (Web Worker) | **default** (mainline = F): variant F Rust→WASM (C-ABI `calc`), built in CI from `VARIANT_F_SHA` in [`engines.lock`](engines.lock) with the release dataset compiled in. Fit stats come from F; its graphs come from `wasm-g4-worker` (F plus its graph layer; `GRAPH_FALLBACK` in `src/engine/adapter.ts`), labeled in the Graphs tab and About. CI gates the deploy on its e2e and the bench 1.8.0 326-case corpus in headless Chrome. TODO (later): when `variant-f-features` (breacher pod pure damage, void bombs, mutated modules, merged graphs) is merged and passes bench 1.9.0, bump `VARIANT_F_SHA` and merge the separate g4 worker into this one |
+| `wasm-j-worker` | browser (Web Worker) | **optional** speed-reference engine (not the default): variant J (round-1 winner; the mainline is Rust based on F; C++20 → WASM with Emscripten, LGPL-3.0-or-later), built in CI from `ENGINE_J_SRC` in [`engines.lock`](engines.lock) (`owner/repo@sha:dir`; moving to EX-CT/eve-dogma is a one-line change). The worker writes the release dataset into the module's virtual FS. J has no graph RPC, so its graphs also come from `wasm-g4-worker` (`GRAPH_FALLBACK`); the Graphs label and the About tab say which backend computed them. CI runs the frozen bench 1.8.0 stats corpus (326 cases) in headless Chrome against this build and against F's `wasm-worker` (`tools/browser-dogma-bench.py`) |
+| `wasm-g4-worker` | browser (Web Worker) | graphs engine: eve-dogma-lab `graphs-g4` (variant F plus a graph layer, 178/178 on CONTRACT-GRAPHS 0.2), WASM `calc` + `rpc` (`graph`, `graph_specs`). Built in CI from the commit pinned in [`engines.lock`](engines.lock) (`GRAPHS_G4_SHA`; bump = edit that line and push). |
 | `http` | any engine server | `POST {url}/v1/calc`, `GET {url}/v1/meta` (graph RPC: `POST {url}/v1/graph`, `GET {url}/v1/graph_specs`); e.g. variant C `serve-http`, through `tools/engine-bridge.mjs` for CORS |
 
-Pick a backend in the header, or with `?engine=wasm-j-worker|ts-worker|wasm-worker|wasm-g4-worker|http&http=http://127.0.0.1:8787`.
+Pick a backend in the header, or with `?engine=wasm-worker|ts-worker|wasm-j-worker|wasm-g4-worker|http&http=http://127.0.0.1:8787`.
 Adding another engine means writing one class that implements `Engine` (`init`, `calc`, and optionally `graph` / `graphSpecs`). The UI code does not change.
 
 Local HTTP engine for the hosted site:
@@ -62,7 +62,7 @@ node tools/engine-bridge.mjs --stdio "eve-dogma --dataset D.json.gz serve-stdio"
 
 ### Default engine backend
 
-The hosted site's default backend comes from `src/engine/defaults.ts` (`ts-worker`). To switch it without a code change,
+The hosted site's default backend is `wasm-worker` (F), set by the repository variable `DEFAULT_ENGINE`; the workflow falls back to `ts-worker` when the variable is unset. To switch it without a code change,
 set the repository variable `DEFAULT_ENGINE` (for example `gh variable set DEFAULT_ENGINE -b wasm-worker -R EX-CT/eve-fit-web`)
 and re-run the `pages` workflow (`tools/switch-default.sh <backend-id>` does both, waits for the run and checks the live build-info), or dispatch `pages` with the `default_engine` input. Visitors who never picked a backend
 follow the new default; an explicit choice in the backend selector is kept. `?engine=<id>` overrides both. The

@@ -19,10 +19,11 @@ export interface Engine {
   dispose(): void;
 }
 
-/** Backends whose graphs come from another backend's graph RPC while their own engine has none. Round 1 (stats) and
- *  round 2 (graphs) are decided separately: J computes the fit stats, graphs-g4 the graphs until the round-2 winner is
- *  in. After that, change or remove this one line. */
-export const GRAPH_FALLBACK: Record<string, string> = { 'wasm-j-worker': 'wasm-g4-worker' };
+/** Backends whose graphs come from another backend's graph RPC while their own engine has none. The mainline is F:
+ *  F (wasm-worker, the default) computes the fit stats, its graph layer graphs-g4 (wasm-g4-worker) the graphs.
+ *  TODO: when variant-f-features (graphs merged into F) passes bench 1.9.0, bump VARIANT_F_SHA in engines.lock, drop
+ *  the separate g4 worker and remove the wasm-worker entry here (F then answers graph_specs itself). */
+export const GRAPH_FALLBACK: Record<string, string> = { 'wasm-worker': 'wasm-g4-worker', 'wasm-j-worker': 'wasm-g4-worker' };
 
 /** GraphRequest per CONTRACT-GRAPHS 0.2: {schema_version, graph, fit, target?, x:{axis, values}, y:[...], params?, settings?} */
 export interface GraphRequest {
