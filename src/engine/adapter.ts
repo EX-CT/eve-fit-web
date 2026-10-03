@@ -14,8 +14,15 @@ export interface Engine {
    *  undefined or resolve graphSpecs() to null; the UI then falls back to its own approximation graphs. */
   graph?(request: GraphRequest): Promise<GraphResult>;
   graphSpecs?(): Promise<GraphSpecs | null>;
+  /** Backend that answers graph() when it is not this engine itself (see GRAPH_FALLBACK); set once graphSpecs() resolved. */
+  readonly graphInfo?: EngineInfo;
   dispose(): void;
 }
+
+/** Backends whose graphs come from another backend's graph RPC while their own engine has none. Round 1 (stats) and
+ *  round 2 (graphs) are decided separately: J computes the fit stats, graphs-g4 the graphs until the round-2 winner is
+ *  in. After that, change or remove this one line. */
+export const GRAPH_FALLBACK: Record<string, string> = { 'wasm-j-worker': 'wasm-g4-worker' };
 
 /** GraphRequest per CONTRACT-GRAPHS 0.2: {schema_version, graph, fit, target?, x:{axis, values}, y:[...], params?, settings?} */
 export interface GraphRequest {
@@ -29,9 +36,10 @@ export interface GraphSpecs { contract?: string; graphs: Record<string, { axes?:
 
 const asSpecs = (r: any): GraphSpecs | null => (r && !r.error && r.graphs && typeof r.graphs === 'object' ? r : null);
 
-export interface EngineConfig { backend: string; httpUrl: string; datasetUrl: string; engineUrl: string; wasmUrl: string; g4WasmUrl?: string }
+export interface EngineConfig { backend: string; httpUrl: string; datasetUrl: string; engineUrl: string; wasmUrl: string; g4WasmUrl?: string; jEngineUrl?: string }
 
 export const BACKENDS: EngineInfo[] = [
+  { id: 'wasm-j-worker', label: 'In-browser: C++20→WASM engine (variant J, round-1 winner) in a Web Worker; graphs via graphs-g4' },
   { id: 'ts-worker', label: 'In-browser: TypeScript engine (variant D) in a Web Worker' },
   { id: 'wasm-worker', label: 'In-browser: Rust→WASM engine (variant F, data compiled in) in a Web Worker' },
   { id: 'wasm-g4-worker', label: 'In-browser: variant F + graph RPC (graphs-g4, round-2 prototype) in a Web Worker' },
@@ -98,11 +106,51 @@ class HttpEngine implements Engine {
   dispose() {}
 }
 
+/** Fit stats from `primary`; graph RPC from `primary` if it has one, else from a lazily started second backend. */
+class GraphSplitEngine implements Engine {
+  graphInfo?: EngineInfo;
+  private g: Promise<Engine | null> | null = null;
+  private own: boolean | null = null;
+  private readonly primary: Engine;
+  private readonly makeGraph: () => Engine;
+  constructor(primary: Engine, makeGraph: () => Engine) { this.primary = primary; this.makeGraph = makeGraph; }
+  get info() { return this.primary.info; }
+  init() { return this.primary.init(); }
+  calc(request: unknown) { return this.primary.calc(request); }
+  private second() {
+    return (this.g ??= (async () => {
+      const e = this.makeGraph();
+      try { await e.init(); return e; } catch { e.dispose(); return null; }
+    })());
+  }
+  async graphSpecs(): Promise<GraphSpecs | null> {
+    if (this.own === null) this.own = !!(await this.primary.graphSpecs?.().catch(() => null));
+    if (this.own) { this.graphInfo = this.primary.info; return this.primary.graphSpecs!(); }
+    const e = await this.second();
+    const specs = e?.graphSpecs ? await e.graphSpecs() : null;
+    this.graphInfo = specs && e ? e.info : undefined;
+    return specs;
+  }
+  async graph(request: GraphRequest): Promise<GraphResult> {
+    if (this.own) return this.primary.graph!(request);
+    const e = await this.second();
+    return e?.graph ? e.graph(request) : { error: { code: 'NO_GRAPH_ENGINE', message: 'graph backend unavailable' } };
+  }
+  dispose() { this.primary.dispose(); this.g?.then((e) => e?.dispose()); }
+}
+
 export function createEngine(cfg: EngineConfig): Engine {
+  const fb = GRAPH_FALLBACK[cfg.backend];
+  if (fb && fb !== cfg.backend) return new GraphSplitEngine(createBase(cfg), () => createBase({ ...cfg, backend: fb }));
+  return createBase(cfg);
+}
+
+function createBase(cfg: EngineConfig): Engine {
   const info = BACKENDS.find((b) => b.id === cfg.backend) ?? BACKENDS[0];
   switch (info.id) {
     case 'http': return new HttpEngine(info, cfg.httpUrl);
     case 'wasm-worker': return new WorkerEngine(info, { kind: 'wasm', wasmUrl: cfg.wasmUrl });
+    case 'wasm-j-worker': return new WorkerEngine(info, { kind: 'emjs', engineUrl: cfg.jEngineUrl ?? cfg.engineUrl.replace('/engines/d/eve-dogma-ts.mjs', '/engines/j/evej.mjs'), datasetUrl: cfg.datasetUrl });
     case 'wasm-g4-worker': return new WorkerEngine(info, { kind: 'wasm', wasmUrl: cfg.g4WasmUrl ?? cfg.wasmUrl.replace('/engines/f/', '/engines/g4/') });
     default: return new WorkerEngine(info, { kind: 'ts', engineUrl: cfg.engineUrl, datasetUrl: cfg.datasetUrl });
   }

@@ -2,6 +2,8 @@
 //  kind 'ts':   variant D bundle (ES module exporting loadDatasetUrl + calc), dataset fetched from datasetUrl.
 //  kind 'wasm': variant F wasm32-unknown-unknown module with C-ABI exports alloc/dealloc/calc (data compiled in);
 //               an `rpc` export (graphs-g4: methods graph / graph_specs) is used for engine-computed graphs.
+//  kind 'emjs': Emscripten ES module (variant J: createEvej(), C functions evej_open / evej_calc / evej_rpc via cwrap);
+//               the dataset (.json.gz) is fetched and written to the module's virtual FS, then opened.
 /// <reference lib="webworker" />
 
 type CalcFn = (req: unknown) => unknown;
@@ -16,6 +18,22 @@ async function initTs(engineUrl: string, datasetUrl: string): Promise<string> {
   rpcFn = typeof mod.rpc === 'function' ? (method, params) => mod.rpc(ds, method, params) : null;
   const m = mod.meta ? mod.meta(ds) : {};
   return `${m.engine ?? mod.ENGINE ?? 'eve-dogma-ts'} · SDE ${m.sde_build ?? '?'}`;
+}
+
+async function initEmjs(engineUrl: string, datasetUrl: string): Promise<string> {
+  const mod: any = await import(/* @vite-ignore */ engineUrl);
+  const create = mod.default ?? mod.createEvej;
+  const M = await create({ locateFile: (f: string) => new URL(f, engineUrl).href });
+  M.FS.writeFile('/dataset.json.gz', new Uint8Array(await (await fetch(datasetUrl)).arrayBuffer()));
+  const err = M.ccall('evej_open', 'string', ['string'], ['/dataset.json.gz']);
+  if (err) throw new Error(`evej_open: ${err}`);
+  const calc = M.cwrap('evej_calc', 'string', ['string']);
+  const rpc = M.cwrap('evej_rpc', 'string', ['string']);
+  calcFn = (req) => JSON.parse(calc(JSON.stringify(req)));
+  rpcFn = (method, params) => { const r = JSON.parse(rpc(JSON.stringify({ id: 1, method, params }))); return r.result ?? r.error ?? null; };
+  let label = 'eve-dogma-j (wasm)';
+  try { const m: any = rpcFn('meta', {}); if (m?.engine) label = `${m.engine} (wasm) · SDE ${m.sde_build ?? '?'}`; } catch { /* ignore */ }
+  return label;
 }
 
 async function initWasm(wasmUrl: string): Promise<string> {
@@ -50,7 +68,8 @@ self.onmessage = async (ev: MessageEvent) => {
   const { id, op } = ev.data;
   try {
     if (op === 'init') {
-      const r = ev.data.kind === 'wasm' ? await initWasm(ev.data.wasmUrl) : await initTs(ev.data.engineUrl, ev.data.datasetUrl);
+      const r = ev.data.kind === 'wasm' ? await initWasm(ev.data.wasmUrl)
+        : ev.data.kind === 'emjs' ? await initEmjs(ev.data.engineUrl, ev.data.datasetUrl) : await initTs(ev.data.engineUrl, ev.data.datasetUrl);
       (self as any).postMessage({ id, result: r });
     } else if (op === 'rpc') {
       if (!rpcFn) throw new Error('engine has no rpc export');

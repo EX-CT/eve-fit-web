@@ -58,6 +58,7 @@ export default function App() {
   const info = infoState?.id ?? null;
   const [showIO, setShowIO] = useState(false);
   const [build, setBuild] = useState<BuildInfo | null>(null);
+  const [graphBackend, setGraphBackend] = useState<string | null>(null);
   useEffect(() => { fetch(`${import.meta.env.BASE_URL}build-info.json`).then((r) => (r.ok ? r.json() : null)).then(setBuild, () => {}); }, []);
   // SDE-derived NPC damage / target profiles (eve-sde-pipeline presets.json) join the built-in profiles (not persisted).
   useEffect(() => { loadSdePresets().then((p) => update((s) => ({ ...s, lib: { ...s.lib,
@@ -83,6 +84,16 @@ export default function App() {
     eng.init().then((s) => { if (alive) { setEngineStatus(`✔ ${s}`); setEngineReady((n) => n + 1); (window as any).__eveEngine = eng; } }, (e) => alive && setEngineStatus(`✖ ${eng.info.id}: ${e.message}`));
     return () => { alive = false; eng.dispose(); };
   }, [ecfg.backend, ecfg.httpUrl, ecfg.datasetUrl, ecfg.engineUrl, ecfg.wasmUrl]);
+
+  // which backend answers graph requests (own graph RPC, GRAPH_FALLBACK, or none = UI approximations)
+  useEffect(() => {
+    setGraphBackend(null);
+    const eng = engineRef.current;
+    if (!engineReady || !eng?.graphSpecs) return;
+    let alive = true;
+    eng.graphSpecs().then((sp) => alive && setGraphBackend(sp ? eng.graphInfo?.id ?? eng.info.id : null), () => {});
+    return () => { alive = false; };
+  }, [engineReady]);
 
   const setLib = useCallback((l: Library) => update((s) => ({ ...s, lib: l })), [update]);
   const putFit = useCallback((f: Fit) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, [f.id]: f } } })), [update]);
@@ -239,7 +250,7 @@ export default function App() {
             onRestore={(l) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, ...l.fits }, characters: { ...s.lib.characters, ...l.characters }, damagePatterns: { ...s.lib.damagePatterns, ...l.damagePatterns }, targetProfiles: { ...s.lib.targetProfiles, ...l.targetProfiles } } }))} />}
           {left === 'char' && <CharacterEditor ds={ds} lib={lib} fit={fit} onLib={setLib} />}
           {left === 'profiles' && <Profiles lib={lib} fit={fit} onLib={setLib} onFit={setFit} />}
-          {left === 'about' && <About cfg={settings.engine} status={engineStatus} st={stats} ds={ds} build={build} />}
+          {left === 'about' && <About cfg={settings.engine} status={engineStatus} st={stats} ds={ds} build={build} graphBackend={graphBackend} />}
         </aside>
         <section className="center">
           <Tabs tabs={[['fit', t('Fit')], ['graphs', t('Graphs')]]} value={center} onChange={setCenter} />

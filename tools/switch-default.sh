@@ -11,6 +11,7 @@ id=${1:?backend id}
 cd "$(dirname "$0")/.."
 grep -q "id: '$id'" src/engine/adapter.ts || { echo "unknown backend '$id' (not in BACKENDS on this checkout; merge its PR first)"; exit 2; }
 case "$id" in
+  wasm-j-worker)  f=engines/j/evej.wasm ;;
   wasm-g4-worker) f=engines/g4/eve_dogma_f.wasm ;;
   wasm-g1-worker) f=engines/g1/eve_dogma_g1_wasm.wasm ;;
   wasm-worker)    f=engines/f/eve_dogma_f.wasm ;;

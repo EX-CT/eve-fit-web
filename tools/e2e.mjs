@@ -99,7 +99,7 @@ await clickText('.center .tabs button', 'Graphs');
 // Backends with the graph RPC (CONTRACT-GRAPHS 0.2) must render engine-computed series; the others the UI approximation.
 // E2E_GRAPH_RPC=1/0 forces it; otherwise wasm-g4-worker has it, and an http engine has it if it answers graph_specs.
 const GRAPH_RPC = process.env.E2E_GRAPH_RPC ? process.env.E2E_GRAPH_RPC === '1'
-  : engine === 'wasm-g4-worker' || (engine === 'http' && (await p.evaluate(async () => !!(await window.__eveEngine?.graphSpecs?.()))));
+  : ['wasm-g4-worker', 'wasm-j-worker'].includes(engine) || (engine === 'http' && (await p.evaluate(async () => !!(await window.__eveEngine?.graphSpecs?.()))));
 const kinds = ['dps', 'cap', 'regen', 'mobility', 'lock', 'warp', ...(GRAPH_RPC ? ['app', 'ewar', 'rr'] : [])];
 if (GRAPH_RPC) await p.waitForFunction(() => document.querySelector('.graphs select option[value="app"]'), { timeout: 30000 }).catch(() => {});
 const offered = await p.evaluate(() => [...document.querySelectorAll('.graphs select option')].map((o) => o.value));
@@ -110,6 +110,12 @@ for (const g of kinds) {
   const src = await p.waitForFunction((w) => { const e = document.querySelector('.graph-src'); return e && e.dataset.src === w && e.dataset.src; }, { timeout: 30000 }, want).then((h) => h.jsonValue(), () => p.evaluate(() => document.querySelector('.graph-src')?.dataset.src + ' ' + (document.querySelector('.graph-src')?.title ?? '')));
   const n = await p.evaluate(() => document.querySelectorAll('svg.chart polyline').length);
   const lg = await p.evaluate(() => window.__lastGraph);
+  if (GRAPH_RPC && g === 'dps') {
+    // which backend computed the graph: the engine itself, or its GRAPH_FALLBACK (wasm-j-worker -> wasm-g4-worker)
+    const by = await p.evaluate(() => document.querySelector('.graph-src')?.dataset.graphBackend);
+    const wantBy = engine === 'wasm-j-worker' ? 'wasm-g4-worker' : engine;
+    check('graph backend label', by === wantBy, `${by} (fit stats: ${engine})`);
+  }
   check(`graph ${g} (${want})`, n > 0 && src === want && (!GRAPH_RPC || lg?.kind === g), `${n} lines, ${src}${lg?.series ? ', ' + lg.series.map((x) => `${x.name}:${x.n}`).join(' ') : ''}`);
   if (GRAPH_RPC && g === 'lock') {
     // lock time = min(40000 / scanRes / asinh(sig)^2, 1800) at sig 10 m, from the stats of the same engine
@@ -263,6 +269,8 @@ check('disabling an attack ability lowers fighter dps', f1 < f0, `${f0} -> ${f1}
 await clickText('.left .tabs button', 'About');
 const ab2 = await p.evaluate(() => ({ be: document.querySelector('.about-backend')?.textContent, eng: document.querySelector('.about-engine')?.textContent ?? '',
   data: document.querySelector('.about-dataset')?.textContent ?? '', links: document.querySelectorAll('.about a').length }));
+const abG = await p.evaluate(() => document.querySelector('.about-graphs')?.textContent ?? '');
+check('about page: graph engine', GRAPH_RPC ? abG.startsWith(engine === 'wasm-j-worker' ? 'wasm-g4-worker' : engine) : abG.startsWith('UI approximation'), abG);
 check('about page: backend, engine, dataset, links', ab2.be === engine && ab2.eng.length > 3 && !ab2.eng.startsWith('—') && ab2.data.includes('3569502') && ab2.links >= 8, JSON.stringify(ab2));
 check('no page errors', errors.length === 0, errors.join(' | '));
 
