@@ -41,7 +41,7 @@ used before the ids were added (2026-10-03):
 | `web.e2e.esi-json-reimport` | ESI JSON re-import |
 | `web.e2e.multi-fit-eft-import` | multi-fit EFT import + fit browser groups |
 | `web.e2e.fit-browser-search` | fit browser search |
-| `web.e2e.fit-price-esi` | fit price from ESI |
+| `web.e2e.fit-price-esi` | fit price from ESI (retired 2026-10-03: prices come from the engine price block, see `web.e2e.engine-price-block`) |
 | `web.e2e.fighter-dps` | fighter dps |
 | `web.e2e.fighter-abilities` | fighter abilities listed |
 | `web.e2e.fighter-ability-toggle` | disabling an attack ability lowers fighter dps |
@@ -84,6 +84,13 @@ used before the ids were added (2026-10-03):
 | `web.e2e.whatif-variations` | what-if lists module variations with engine dps (T1 below T2) |
 | `web.e2e.xml-export` | EVE XML export |
 | `web.e2e.xml-reimport` | EVE XML re-import keeps the mutated module |
+| `web.e2e.compare-batch` | (new) the compare window computes all fits in one engine batch call (docs/23) on F backends, one calc per fit elsewhere |
+| `web.e2e.engine-price-block` | (new) fit price from the engine price block (embedded Jita snapshot) with provenance (F backends) |
+| `web.e2e.price-update-snapshot` | (new) "update prices" injects the latest eve-market-prices snapshot into the engine (prices_load) |
+| `web.e2e.my-prices-self-made` | (new) a "my price" (self-produced = 0) is sent as price_override and stored locally |
+| `web.e2e.my-prices-editor` | (new) a category multiplier from the "my prices" editor scales the ship price |
+| `web.e2e.price-reset` | (new) clearing my prices and "update prices" returns to the embedded snapshot |
+| `web.e2e.price-unsupported` | (new) backends without the engine price block (ts-worker, J) say so |
 | `web.e2e.zh-ui` | zh-CN UI (tabs, stats sections, slots, import/export dialog) has no untranslated labels |
 
 ## Unit tests (`npm test`, vitest)
@@ -105,6 +112,9 @@ built from the engines.lock pin (`REQUIRE_FORMATS_WASM=1`: the WASM formats test
 | `web.unit.charges-valid-only` | `src/data/charges.test.ts` | the charge picker offers only charges of the module charge groups, size and capacity |
 | `web.unit.compare-best-delta` | `src/fit/metrics.test.ts` | best per direction (high dps, low align) and deltas vs the first fit |
 | `web.unit.compare-ties-missing` | `src/fit/metrics.test.ts` | equal values mark no best; all-zero rows dropped; errored stats are missing |
+| `web.unit.my-prices-validation` | `src/data/prices.test.ts` | docs/23 override shape: one target, one of price / multiplier, values >= 0 |
+| `web.unit.my-prices-storage` | `src/data/prices.test.ts` | my prices and the update toggle round-trip through localStorage; invalid entries dropped |
+| `web.unit.price-snapshot-parse` | `src/data/prices.test.ts` | eve-price-snapshot v1, gzip or plain; other files rejected |
 | `web.unit.formats-wasm-active` | `src/formats/wasm.test.ts` | the formats layer uses the WASM module once loaded |
 | `web.unit.formats-wasm-dna-esi` | `src/formats/wasm.test.ts` | DNA and ESI JSON exports |
 | `web.unit.formats-wasm-eft-export` | `src/formats/wasm.test.ts` | Pyfa EFT export of the structured request, round trip |
