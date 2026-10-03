@@ -59,10 +59,10 @@ jobs:
           cp lab-d/variant-d/dist-web/eve-dogma-ts.mjs public/engines/d/
           cp lab-d/variant-d/LICENSE public/engines/d/LICENSE 2>/dev/null || cp lab-d/LICENSE public/engines/d/LICENSE 2>/dev/null || true
           echo "ENGINE_D=$(git -C lab-d rev-parse --short HEAD)" >> "$GITHUB_ENV"
-      - name: Engine F (Rust -> WASM, dataset compiled in)
+      - name: Engine F (Rust -> WASM, dataset compiled in; engines.lock VARIANT_F_SHA)
         continue-on-error: true
         run: |
-          git clone -q --depth 1 -b variant-f https://github.com/EX-CT/eve-dogma-lab lab-f
+          git init -q lab-f && git -C lab-f fetch -q --depth 1 https://github.com/EX-CT/eve-dogma-lab "$VARIANT_F_SHA" && git -C lab-f checkout -q FETCH_HEAD
           rustup target add wasm32-unknown-unknown
           (cd lab-f/variant-f && EVE_DOGMA_DATASET="$GITHUB_WORKSPACE/public/data/dataset.json.gz" cargo build --lib --profile release-small --target wasm32-unknown-unknown)
           mkdir -p public/engines/f
