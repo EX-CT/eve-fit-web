@@ -28,8 +28,8 @@ export function TypeRowView({ ds, id, onPick, onInfo, depth = 0 }: { ds: Dataset
   const slot = ds.slot(id);
   const ml = ds.type(id)?.meta_level;
   return (
-    <li className="trow" style={{ paddingLeft: depth * 12 + 10 }} onDoubleClick={() => onPick(id)} title="double-click to add">
-      <span className={'kind k-' + ds.kind(id)}>{slot ?? ds.kind(id)}</span>
+    <li className="trow" style={{ paddingLeft: depth * 12 + 10 }} onDoubleClick={() => onPick(id)} title={tr('double-click to add')}>
+      <span className={'kind k-' + ds.kind(id)}>{tr(slot ?? ds.kind(id))}</span>
       <span className="tname" onClick={() => onPick(id)}>{ds.name(id)}</span>
       {ml ? <span className="meta">M{ml}</span> : null}
       <button className="mini" onClick={(e) => { e.stopPropagation(); onInfo(id); }} title={tr('Show info')}>i</button>
@@ -43,15 +43,15 @@ export function Market({ ds, onPick, onInfo }: { ds: Dataset; onPick: (t: number
   const results = useMemo(() => (q.trim().length >= 2 ? ds.search(q, 80, KIND_FILTERS[kf][1] ?? undefined) : []), [ds, q, kf]);
   return (
     <div className="market">
-      <input className="search" placeholder="Search items (English / 中文)…" value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="chips">{KIND_FILTERS.map(([l], i) => <button key={l} className={i === kf ? 'on' : ''} onClick={() => setKf(i)}>{l}</button>)}</div>
+      <input className="search" placeholder={tr('Search items (English / 中文)…')} value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="chips">{KIND_FILTERS.map(([l], i) => <button key={l} className={i === kf ? 'on' : ''} onClick={() => setKf(i)}>{tr(l)}</button>)}</div>
       {q.trim().length >= 2 ? (
         <ul className="tree">{results.map((t) => <TypeRowView key={t} ds={ds} id={t} onPick={onPick} onInfo={onInfo} />)}
-          {!results.length && <li className="muted">no matches</li>}</ul>
+          {!results.length && <li className="muted">{tr('no matches')}</li>}</ul>
       ) : (
         <ul className="tree">{ds.mgRoots.map((r) => <Node key={r} ds={ds} id={r} onPick={onPick} onInfo={onInfo} depth={0} />)}</ul>
       )}
-      <p className="hint">Click an item to add it to the active fit (or to the projected list when “add to projected” is on). Ships create a new fit.</p>
+      <p className="hint">{tr('Click an item to add it to the active fit (or to the projected list when “add to projected” is on). Ships create a new fit.')}</p>
     </div>
   );
 }
@@ -90,18 +90,18 @@ export function ItemInfo({ ds, id, onClose, fitted, fittedNote, overrides, onOve
         {traits && (
           <div className="traits">
             {Object.entries(traits.skills ?? {}).map(([sk, bs]) => (
-              <div key={sk}><b>{ds.name(+sk)} bonuses (per level):</b><ul>{bs.map((b, i) => <li key={i}>{bonus(b)}</li>)}</ul></div>
+              <div key={sk}><b>{ds.name(+sk)} {tr('bonuses (per level):')}</b><ul>{bs.map((b, i) => <li key={i}>{bonus(b)}</li>)}</ul></div>
             ))}
             {traits.role?.length ? <div><b>{tr('Role bonus:')}</b><ul>{traits.role.map((b, i) => <li key={i}>{bonus(b)}</li>)}</ul></div> : null}
             {traits.misc?.length ? <div><b>{tr('Misc:')}</b><ul>{traits.misc.map((b, i) => <li key={i}>{bonus(b)}</li>)}</ul></div> : null}
           </div>
         )}
         {req.length > 0 && <p><b>{tr('Required skills:')}</b> {req.map(([s, l]) => `${ds.name(s)} ${l}`).join(', ')}</p>}
-        <label><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> show unpublished attributes</label>
-        {onOverride && <label> <input type="checkbox" className="editov" checked={editOv} onChange={(e) => setEditOv(e.target.checked)} /> edit attribute overrides (this fit){overrides && Object.keys(overrides).length ? ` · ${Object.keys(overrides).length} active` : ''}</label>}
-        {fitted !== undefined && <p className="muted">{fitted ? 'Fitted values computed by the engine (changed values highlighted).' : fittedNote ?? 'computing fitted values…'}</p>}
+        <label><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> {tr('show unpublished attributes')}</label>
+        {onOverride && <label> <input type="checkbox" className="editov" checked={editOv} onChange={(e) => setEditOv(e.target.checked)} /> {tr('edit attribute overrides (this fit)')}{overrides && Object.keys(overrides).length ? ` · ${Object.keys(overrides).length} ${tr('active')}` : ''}</label>}
+        {fitted !== undefined && <p className="muted">{fitted ? tr('Fitted values computed by the engine (changed values highlighted).') : fittedNote ?? tr('computing fitted values…')}</p>}
         <table className="attrs">
-          {(fitted || editOv) && <thead><tr><th>attribute</th><th className="num">base</th>{fitted && <th className="num">fitted</th>}{editOv && <th>override</th>}</tr></thead>}
+          {(fitted || editOv) && <thead><tr><th>{tr('attribute')}</th><th className="num">{tr('base')}</th>{fitted && <th className="num">{tr('fitted')}</th>}{editOv && <th>{tr('override')}</th>}</tr></thead>}
           <tbody>
           {attrs.map((x) => {
             const fmt = (v: number | undefined) => (v == null ? '—' : `${+v.toFixed(4)} ${unit(x.info?.unit)}`);

@@ -351,6 +351,18 @@ const ab2 = await p.evaluate(() => ({ be: document.querySelector('.about-backend
 const abG = await p.evaluate(() => document.querySelector('.about-graphs')?.textContent ?? '');
 check('web.e2e.about-graph-engine: about page: graph engine', GRAPH_RPC ? abG.startsWith(engine === 'wasm-j-worker' ? 'wasm-worker' : engine) : abG.startsWith('UI approximation'), abG);
 check('web.e2e.about-page: about page: backend, engine, dataset, links', ab2.be === engine && ab2.eng.length > 3 && !ab2.eng.startsWith('—') && ab2.data.includes('3569502') && ab2.links >= 8, JSON.stringify(ab2));
+// full zh-CN UI: tabs, stats sections, slot headers and the import/export dialog are in Chinese (no English UI words left)
+await langSel('zh');
+await new Promise((r) => setTimeout(r, 300));
+const zhUi = await p.evaluate(() => ({ tabs: [...document.querySelectorAll('.tabs button')].map((x) => x.textContent.replace(/\s*\(\d+\)$/, '')),
+  sections: [...document.querySelectorAll('.stats .section h3')].map((x) => x.firstChild?.textContent ?? ''), slots: [...document.querySelectorAll('.slotgroup h4')].map((x) => x.firstChild?.textContent ?? '') }));
+await clickText('header button', '导入 / 导出');
+const zhIo = await p.evaluate(() => ({ h: document.querySelector('.dialog h2')?.textContent, btns: [...document.querySelectorAll('.dialog button')].map((x) => x.textContent) }));
+await p.evaluate(() => document.querySelector('.modal')?.click());
+await langSel('en');
+const latin = (xs) => xs.filter((x) => /[a-z]{3,}/.test(x.replace(/DPS|EFT|DNA|ESI|JSON|XML|Ctrl/g, '')));
+const zhAll = [...zhUi.tabs, ...zhUi.sections, ...zhUi.slots, zhIo.h ?? '', ...zhIo.btns];
+check('web.e2e.zh-ui: zh-CN UI (tabs, stats sections, slots, import/export dialog) has no untranslated labels', zhUi.tabs.includes('假设分析') && zhUi.tabs.includes('对比') && zhUi.sections.length > 3 && zhIo.h === '导入 / 导出' && latin(zhAll).length === 0, latin(zhAll).join(' | ') || `${zhAll.length} labels`);
 check('web.e2e.no-page-errors: no page errors', errors.length === 0, errors.join(' | '));
 
 await b.close();

@@ -37,7 +37,7 @@ export function PriceBox({ ds, fit }: { ds: Dataset; fit: Fit | null }) {
   return (
     <Section title={t('Price')} right={<b className="pricetotal">{isk(total)}</b>}>
       <div className="kv">{rows.filter(([, v]) => v > 0).map(([k, v]) => <span key={k}>{k} {isk(v)}</span>)}</div>
-      <div className="muted small">ESI average prices · {new Date(prices.at).toLocaleString()} <button className="mini" onClick={load} title="refresh">↻</button></div>
+      <div className="muted small">{t('ESI average prices')} · {new Date(prices.at).toLocaleString()} <button className="mini" onClick={load} title={t('refresh')}>↻</button></div>
     </Section>
   );
 }

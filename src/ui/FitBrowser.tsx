@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { t } from '../i18n';
+const tr = t;
 import type { Dataset } from '../data/dataset';
 import type { Fit, Library } from '../fit/model';
 
@@ -14,7 +15,7 @@ export function FitBrowser({ ds, lib, activeId, onOpen, onDuplicate, onDelete, o
   const fits = Object.values(lib.fits).filter((f) => !ql || f.name.toLowerCase().includes(ql) || ds.name(f.ship_type_id).toLowerCase().includes(ql) || ds.name(f.ship_type_id, 'en').toLowerCase().includes(ql));
   const groups = new Map<string, Fit[]>();
   for (const f of fits) {
-    const g = ds.groupName(ds.type(f.ship_type_id)?.group ?? 0) || 'Other';
+    const g = ds.groupName(ds.type(f.ship_type_id)?.group ?? 0) || t('Other');
     groups.set(g, [...(groups.get(g) ?? []), f]);
   }
   const backup = () => {
@@ -25,9 +26,9 @@ export function FitBrowser({ ds, lib, activeId, onOpen, onDuplicate, onDelete, o
   };
   const restore = (file: File) => file.text().then((t) => {
     const j = JSON.parse(t);
-    if (j?.format !== 'eve-fit-web-library' || !j.lib?.fits) throw new Error('not an eve-fit-web backup');
+    if (j?.format !== 'eve-fit-web-library' || !j.lib?.fits) throw new Error(tr('not an eve-fit-web backup'));
     onRestore(j.lib as Library);
-    setMsg(`restored ${Object.keys(j.lib.fits).length} fits`);
+    setMsg(`${tr('restored fits')}: ${Object.keys(j.lib.fits).length}`);
   }).catch((e) => setMsg(e.message));
   return (
     <div className="fitbrowser">
@@ -41,14 +42,14 @@ export function FitBrowser({ ds, lib, activeId, onOpen, onDuplicate, onDelete, o
                 <b>{ds.name(f.ship_type_id)}</b> {f.name}
                 <span className="right">
                   <button className="mini" title={t('Duplicate')} onClick={(e) => { e.stopPropagation(); onDuplicate(f); }}>⧉</button>
-                  <button className="mini" title={t('Delete')} onClick={(e) => { e.stopPropagation(); if (confirm(`Delete fit "${f.name}"?`)) onDelete(f.id); }}>✕</button>
+                  <button className="mini" title={t('Delete')} onClick={(e) => { e.stopPropagation(); if (confirm(`${t('Delete fit')} "${f.name}"?`)) onDelete(f.id); }}>✕</button>
                 </span>
               </li>
             ))}
           </ul>
         </details>
       ))}
-      {fits.length === 0 && <p className="muted">{ql ? 'No fit matches.' : t('Pick a ship in the Market tab to start a new fit.')}</p>}
+      {fits.length === 0 && <p className="muted">{ql ? t('No fit matches.') : t('Pick a ship in the Market tab to start a new fit.')}</p>}
       <div className="row">
         <button onClick={backup} title={t('Download all fits, characters and profiles as JSON')}>{t('Backup library')}</button>
         <label className="button">{t('Restore… ')}<input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])} /></label>

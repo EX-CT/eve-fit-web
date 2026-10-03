@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { t } from '../i18n';
+const tr = t;
 import type { InfoCtx } from './Market';
 import type { Dataset, Slot } from '../data/dataset';
 import type { Fit, FitModule, Library, ModState } from '../fit/model';
@@ -40,18 +41,18 @@ function ModuleRow({ ds, m, idx, fit, stats, onChange, onInfo }: { ds: Dataset; 
   const muta = m.mutation ? ds.raw.mutaplasmids?.[m.mutation.mutaplasmid_type_id] : null;
   return (
     <div className={'mod' + (viol.length ? ' bad' : '')} title={viol.map((v: any) => v.message).join('\n')}>
-      <button className={'state s-' + m.state} onClick={() => cycle(1)} onContextMenu={(e) => { e.preventDefault(); cycle(-1); }} title={`${m.state} (click: next, right-click: previous)`}>{STATE_ICON[m.state]}</button>
+      <button className={'state s-' + m.state} onClick={() => cycle(1)} onContextMenu={(e) => { e.preventDefault(); cycle(-1); }} title={`${t(m.state)} (${t('click: next, right-click: previous')})`}>{STATE_ICON[m.state]}</button>
       <span className="mname" onClick={() => onInfo(m.type_id, { module: idx })}>{ds.name(m.type_id)}{m.mutation ? ' ✦' : ''}</span>
       {charges.length > 0 && (
         <select value={m.charge_type_id ?? ''} onChange={(e) => set({ charge_type_id: e.target.value ? +e.target.value : null })}>
-          <option value="">— no charge —</option>
+          <option value="">{t('— no charge —')}</option>
           {charges.map((c) => <option key={c} value={c}>{ds.name(c)}</option>)}
         </select>
       )}
       {(ds.attr(m.type_id, 'damageMultiplierBonusMax') != null || ds.attr(m.type_id, 'repairMultiplierBonusMax') != null) && (
-        <select className="spool" title="spool-up for this module (default: fit option)" value={m.spool == null ? '' : String(m.spool)} onChange={(e) => set({ spool: e.target.value === '' ? null : +e.target.value })}>
-          <option value="">spool: default</option>
-          {[0, 0.25, 0.5, 0.75, 1].map((v) => <option key={v} value={v}>spool {v * 100}%</option>)}
+        <select className="spool" title={t('spool-up for this module (default: fit option)')} value={m.spool == null ? '' : String(m.spool)} onChange={(e) => set({ spool: e.target.value === '' ? null : +e.target.value })}>
+          <option value="">{t('spool: default')}</option>
+          {[0, 0.25, 0.5, 0.75, 1].map((v) => <option key={v} value={v}>{t('spool')} {v * 100}%</option>)}
         </select>
       )}
       {mutas.length > 0 && <button className="mini" onClick={() => setShowMuta(!showMuta)} title={t('Mutaplasmid')}>✦</button>}
@@ -67,7 +68,7 @@ function ModuleRow({ ds, m, idx, fit, stats, onChange, onInfo }: { ds: Dataset; 
             const attrs = Object.fromEntries(Object.keys(ds.raw.mutaplasmids![v].attrs).map((a) => [a, ds.type(base)?.attrs[a] ?? 0]));
             set({ type_id: opt.output, mutation: { base_type_id: base, mutaplasmid_type_id: v, attributes: attrs } });
           }}>
-            <option value="">— not mutated —</option>
+            <option value="">{t('— not mutated —')}</option>
             {mutas.map((x) => <option key={x.muta} value={x.muta}>{ds.name(x.muta)}</option>)}
           </select>
           {muta && m.mutation && Object.entries(muta.attrs).map(([a, [lo, hi]]) => {
@@ -106,7 +107,7 @@ function ImplantSets({ ds, fit, onChange }: FitProps) {
   const apply = (id: string) => { const s = all.find((x) => x.id === id); if (s) onChange({ ...fit, implants: applyImplantSet(fit.implants, s, slotOf) }); };
   const save = () => {
     if (!fit.implants.length) return;
-    const name = prompt(t('Name for this implant set'), 'My implants');
+    const name = prompt(t('Name for this implant set'), t('My implants'));
     if (!name) return;
     const set: ImplantSet = { id: 'user:' + Math.random().toString(36).slice(2, 8), name, grade: null, complete: true, user: true,
       members: fit.implants.map((id) => ({ type_id: id, slot: slotOf(id) ?? 0 })) };
@@ -135,13 +136,13 @@ function Bays(p: FitProps) {
     <>
       {fit.drones.length > 0 && <div className="bay"><h4>{t('Drones')}</h4>{fit.drones.map((d, i) => (
         <div className="mod" key={i}><span className="mname" onClick={() => onInfo(d.type_id, { drone: i })}>{ds.name(d.type_id)}</span>
-          <span>qty <Qty value={d.quantity} min={1} onChange={(v) => onChange({ ...fit, drones: fit.drones.map((x, j) => (j === i ? { ...x, quantity: v, active: Math.min(x.active, v) } : x)) })} /></span>
-          <span>active <Qty value={d.active} max={d.quantity} onChange={(v) => onChange({ ...fit, drones: fit.drones.map((x, j) => (j === i ? { ...x, active: v } : x)) })} /></span>
+          <span>{t('qty')} <Qty value={d.quantity} min={1} onChange={(v) => onChange({ ...fit, drones: fit.drones.map((x, j) => (j === i ? { ...x, quantity: v, active: Math.min(x.active, v) } : x)) })} /></span>
+          <span>{t('active')} <Qty value={d.active} max={d.quantity} onChange={(v) => onChange({ ...fit, drones: fit.drones.map((x, j) => (j === i ? { ...x, active: v } : x)) })} /></span>
           <button className="mini" onClick={() => rm('drones', i)}>✕</button></div>))}</div>}
       {fit.fighters.length > 0 && <div className="bay"><h4>{t('Fighters')}</h4>{fit.fighters.map((f, i) => (
         <div className="mod" key={i}><span className="mname" onClick={() => onInfo(f.type_id)}>{ds.name(f.type_id)}</span>
-          <span>squadron <Qty value={f.quantity} min={1} onChange={(v) => onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, quantity: v } : x)) })} /></span>
-          <label><input type="checkbox" checked={f.active} onChange={(e) => onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, active: e.target.checked } : x)) })} /> launched</label>
+          <span>{t('squadron')} <Qty value={f.quantity} min={1} onChange={(v) => onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, quantity: v } : x)) })} /></span>
+          <label><input type="checkbox" checked={f.active} onChange={(e) => onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, active: e.target.checked } : x)) })} /> {t('launched')}</label>
           <button className="mini" onClick={() => rm('fighters', i)}>✕</button>
           <div className="subopts">{ds.fighterAbilities(f.type_id).map((a, _k, all) => {
             const on = f.abilities ? f.abilities.includes(a.effect) : a.default;
@@ -150,12 +151,12 @@ function Bays(p: FitProps) {
               const next = on ? cur.filter((x) => x !== a.effect) : [...cur, a.effect];
               onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, abilities: next } : x)) });
             };
-            return <label key={a.effect} title={'effect ' + a.effect}><input type="checkbox" className="ability" checked={on} onChange={toggle} /> {a.name}</label>;
+            return <label key={a.effect} title={`${t('effect')} ${a.effect}`}><input type="checkbox" className="ability" checked={on} onChange={toggle} /> {a.name}</label>;
           })}</div></div>))}</div>}
       <ImplantSets {...p} />
       {(fit.implants.length > 0 || fit.boosters.length > 0) && <div className="bay"><h4>{t('Implants & boosters')}</h4>
-        {fit.implants.map((t, i) => <div className="mod" key={'i' + i}><span className="mname" onClick={() => onInfo(t)}>{ds.name(t)}</span><span className="muted">slot {ds.attr(t, 'implantness') ?? '?'}</span><button className="mini" onClick={() => rm('implants', i)}>✕</button></div>)}
-        {fit.boosters.map((b, i) => <div className="mod" key={'b' + i}><span className="mname" onClick={() => onInfo(b.type_id)}>{ds.name(b.type_id)}</span><span className="muted">booster slot {ds.attr(b.type_id, 'boosterness') ?? '?'}</span><button className="mini" onClick={() => rm('boosters', i)}>✕</button>
+        {fit.implants.map((t, i) => <div className="mod" key={'i' + i}><span className="mname" onClick={() => onInfo(t)}>{ds.name(t)}</span><span className="muted">{tr('slot')} {ds.attr(t, 'implantness') ?? '?'}</span><button className="mini" onClick={() => rm('implants', i)}>✕</button></div>)}
+        {fit.boosters.map((b, i) => <div className="mod" key={'b' + i}><span className="mname" onClick={() => onInfo(b.type_id)}>{ds.name(b.type_id)}</span><span className="muted">{t('booster slot')} {ds.attr(b.type_id, 'boosterness') ?? '?'}</span><button className="mini" onClick={() => rm('boosters', i)}>✕</button>
           <div className="subopts">{ds.boosterSideEffects(b.type_id).map((se) => {
             const on = (b.side_effects ?? []).includes(se.effect);
             const toggle = () => onChange({ ...fit, boosters: fit.boosters.map((x, j) => (j === i ? { ...x, side_effects: on ? (x.side_effects ?? []).filter((e) => e !== se.effect) : [...(x.side_effects ?? []), se.effect] } : x)) });
@@ -179,50 +180,50 @@ function Projected(p: FitProps & { addProjected: boolean; setAddProjected: (b: b
   const setP = (i: number, patch: object) => onChange({ ...fit, projected: fit.projected.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
   return (
     <div>
-      <label className="toggle"><input type="checkbox" checked={p.addProjected} onChange={(e) => p.setAddProjected(e.target.checked)} /> add items from the market as <b>projected onto this fit</b></label>
+      <label className="toggle"><input type="checkbox" checked={p.addProjected} onChange={(e) => p.setAddProjected(e.target.checked)} /> {t('add items from the market as')} <b>{t('projected onto this fit')}</b></label>
       <h4>{t('Projected onto this fit')}</h4>
-      {fit.projected.length === 0 && <p className="muted">Nothing projected. Turn on the toggle above and pick webs, paints, neuts, remote reps, drones… or project a saved fit.</p>}
+      {fit.projected.length === 0 && <p className="muted">{t('Nothing projected. Turn on the toggle above and pick webs, paints, neuts, remote reps, drones… or project a saved fit.')}</p>}
       {fit.projected.map((x, i) => (
         <div className="mod" key={i}>
-          <span className="mname" onClick={() => x.type_id && onInfo(x.type_id)}>{x.kind === 'fit' ? `Fit: ${lib.fits[x.fit_id!]?.name ?? '(deleted)'}` : ds.name(x.type_id!)}</span>
+          <span className="mname" onClick={() => x.type_id && onInfo(x.type_id)}>{x.kind === 'fit' ? `${t('Fit')}: ${lib.fits[x.fit_id!]?.name ?? t('(deleted)')}` : ds.name(x.type_id!)}</span>
           <span>×<Qty value={x.amount} min={1} max={50} onChange={(v) => setP(i, { amount: v })} /></span>
-          <span>at <input className="qty wide" type="number" min={0} step={500} value={x.distance_m ?? ''} placeholder="any" onChange={(e) => setP(i, { distance_m: e.target.value === '' ? null : +e.target.value })} /> m</span>
+          <span>{t('at')} <input className="qty wide" type="number" min={0} step={500} value={x.distance_m ?? ''} placeholder={t('any')} onChange={(e) => setP(i, { distance_m: e.target.value === '' ? null : +e.target.value })} /> m</span>
           <button className="mini" onClick={() => onChange({ ...fit, projected: fit.projected.filter((_, j) => j !== i) })}>✕</button>
         </div>
       ))}
       <div className="row">
-        <select value={pf} onChange={(e) => setPf(e.target.value)}><option value="">project a saved fit…</option>{others.map((f) => <option key={f.id} value={f.id}>{f.name} ({ds.name(f.ship_type_id)})</option>)}</select>
+        <select value={pf} onChange={(e) => setPf(e.target.value)}><option value="">{t('project a saved fit…')}</option>{others.map((f) => <option key={f.id} value={f.id}>{f.name} ({ds.name(f.ship_type_id)})</option>)}</select>
         <button disabled={!pf} onClick={() => { onChange({ ...fit, projected: [...fit.projected, { kind: 'fit', fit_id: pf, amount: 1, distance_m: 10000 }] }); setPf(''); }}>{t('Project fit')}</button>
       </div>
       <h4>{t('Fleet boosters (command bursts)')}</h4>
       {fit.fleet.booster_fit_ids.map((id) => (
-        <div className="mod" key={id}><span className="mname">{lib.fits[id]?.name ?? '(deleted)'}</span>
+        <div className="mod" key={id}><span className="mname">{lib.fits[id]?.name ?? t('(deleted)')}</span>
           <button className="mini" onClick={() => onChange({ ...fit, fleet: { ...fit.fleet, booster_fit_ids: fit.fleet.booster_fit_ids.filter((x) => x !== id) } })}>✕</button></div>
       ))}
       <div className="row">
-        <select value={bf} onChange={(e) => setBf(e.target.value)}><option value="">add booster fit…</option>{others.map((f) => <option key={f.id} value={f.id}>{f.name} ({ds.name(f.ship_type_id)})</option>)}</select>
+        <select value={bf} onChange={(e) => setBf(e.target.value)}><option value="">{t('add booster fit…')}</option>{others.map((f) => <option key={f.id} value={f.id}>{f.name} ({ds.name(f.ship_type_id)})</option>)}</select>
         <button disabled={!bf} onClick={() => { onChange({ ...fit, fleet: { ...fit.fleet, booster_fit_ids: [...new Set([...fit.fleet.booster_fit_ids, bf])] } }); setBf(''); }}>{t('Add booster')}</button>
       </div>
       <h4>{t('Manual fleet buffs')}</h4>
       {fit.fleet.buffs.map((b, i) => (
-        <div className="mod" key={'fb' + i}><span className="mname">{ds.warfareBuffs().find(([k]) => k === b.buff_id)?.[1] ?? `buff ${b.buff_id}`}</span>
+        <div className="mod" key={'fb' + i}><span className="mname">{ds.warfareBuffs().find(([k]) => k === b.buff_id)?.[1] ?? `${t('buff')} ${b.buff_id}`}</span>
           <input className="qty wide" type="number" step={1} value={b.value} onChange={(e) => onChange({ ...fit, fleet: { ...fit.fleet, buffs: fit.fleet.buffs.map((x, j) => (j === i ? { ...x, value: +e.target.value } : x)) } })} />
           <button className="mini" onClick={() => onChange({ ...fit, fleet: { ...fit.fleet, buffs: fit.fleet.buffs.filter((_, j) => j !== i) } })}>✕</button></div>
       ))}
       <div className="row">
         <select className="buffsel" value="" onChange={(e) => e.target.value && onChange({ ...fit, fleet: { ...fit.fleet, buffs: [...fit.fleet.buffs, { buff_id: +e.target.value, value: -10 }] } })}>
-          <option value="">add a warfare buff (value as in-game %, e.g. -10)…</option>
+          <option value="">{t('add a warfare buff (value as in-game %, e.g. -10)…')}</option>
           {ds.warfareBuffs().map(([k, n]) => <option key={k} value={k}>{n}</option>)}
         </select>
       </div>
       <h4>{t('Environment')}</h4>
       <div className="row">
         <select value="" onChange={(e) => e.target.value && onChange({ ...fit, environment: [...new Set([...fit.environment, +e.target.value])] })}>
-          <option value="">add system effect / beacon…</option>
+          <option value="">{t('add system effect / beacon…')}</option>
           {beacons.map(([k, b]) => <option key={k} value={k}>[{b.kind}] {ds.name(+k)}</option>)}
         </select>
         <select value={fit.system_security ?? ''} onChange={(e) => onChange({ ...fit, system_security: (e.target.value || null) as Fit['system_security'] })}>
-          <option value="">security: default (nullsec)</option><option value="hisec">hisec</option><option value="lowsec">lowsec</option><option value="nullsec">nullsec</option><option value="wspace">w-space</option>
+          <option value="">{t('security: default (nullsec)')}</option><option value="hisec">{t('hisec')}</option><option value="lowsec">{t('lowsec')}</option><option value="nullsec">{t('nullsec')}</option><option value="wspace">{t('w-space')}</option>
         </select>
       </div>
       {fit.environment.map((id) => (
@@ -244,10 +245,10 @@ export function Fitting(p: FitProps & { addProjected: boolean; setAddProjected: 
         <input value={fit.name} onChange={(e) => onChange({ ...fit, name: e.target.value })} />
         {modes.length > 0 && (
           <select value={fit.mode_type_id ?? ''} onChange={(e) => onChange({ ...fit, mode_type_id: e.target.value ? +e.target.value : null })}>
-            <option value="">mode: default</option>{modes.map((m) => <option key={m} value={m}>{ds.name(m)}</option>)}
+            <option value="">{t('mode: default')}</option>{modes.map((m) => <option key={m} value={m}>{ds.name(m)}</option>)}
           </select>
         )}
-        <select value={fit.character_id} onChange={(e) => onChange({ ...fit, character_id: e.target.value })} title="Character">
+        <select value={fit.character_id} onChange={(e) => onChange({ ...fit, character_id: e.target.value })} title={t('Character')}>
           {Object.values(lib.characters).map((c) => <option key={c.id} value={c.id}>👤 {c.name}</option>)}
         </select>
       </div>
@@ -262,7 +263,7 @@ export function Fitting(p: FitProps & { addProjected: boolean; setAddProjected: 
               <div className="slotgroup" key={s}>
                 <h4>{t(label)} <span className="muted">{mods.length}/{total}</span></h4>
                 {mods.map(([m, i]) => <ModuleRow key={i} {...p} m={m} idx={i} />)}
-                {Array.from({ length: Math.max(0, total - mods.length) }, (_, i) => <div key={'e' + i} className="mod empty">[empty {s} slot]</div>)}
+                {Array.from({ length: Math.max(0, total - mods.length) }, (_, i) => <div key={'e' + i} className="mod empty">{t(`[empty ${s} slot]`)}</div>)}
               </div>
             );
           })}
@@ -272,10 +273,10 @@ export function Fitting(p: FitProps & { addProjected: boolean; setAddProjected: 
       {tab === 'proj' && <Projected {...p} />}
       {tab === 'opts' && (
         <div className="opts">
-          <label><input type="checkbox" checked={fit.options.factor_reload} onChange={(e) => onChange({ ...fit, options: { ...fit.options, factor_reload: e.target.checked } })} /> factor in reload time</label>
-          <label>default spool-up <input type="range" min={0} max={1} step={0.05} value={fit.options.spool} onChange={(e) => onChange({ ...fit, options: { ...fit.options, spool: +e.target.value } })} /> {(fit.options.spool * 100).toFixed(0)}%</label>
-          <label>reactive armor hardener <select value={fit.options.rah} onChange={(e) => onChange({ ...fit, options: { ...fit.options, rah: e.target.value as 'adapt' | 'disable' } })}><option value="adapt">adapt to damage pattern</option><option value="disable">unadapted</option></select></label>
-          <label>notes<textarea value={fit.notes ?? ''} onChange={(e) => onChange({ ...fit, notes: e.target.value })} /></label>
+          <label><input type="checkbox" checked={fit.options.factor_reload} onChange={(e) => onChange({ ...fit, options: { ...fit.options, factor_reload: e.target.checked } })} /> {t('factor in reload time')}</label>
+          <label>{t('default spool-up')} <input type="range" min={0} max={1} step={0.05} value={fit.options.spool} onChange={(e) => onChange({ ...fit, options: { ...fit.options, spool: +e.target.value } })} /> {(fit.options.spool * 100).toFixed(0)}%</label>
+          <label>{t('reactive armor hardener')} <select value={fit.options.rah} onChange={(e) => onChange({ ...fit, options: { ...fit.options, rah: e.target.value as 'adapt' | 'disable' } })}><option value="adapt">{t('adapt to damage pattern')}</option><option value="disable">{t('unadapted')}</option></select></label>
+          <label>{t('notes')}<textarea value={fit.notes ?? ''} onChange={(e) => onChange({ ...fit, notes: e.target.value })} /></label>
         </div>
       )}
     </div>

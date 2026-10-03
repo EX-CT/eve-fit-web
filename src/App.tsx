@@ -44,8 +44,8 @@ Small Projectile Collision Accelerator I
 export default function App() {
   const [state, update] = useAppState();
   const [ds, setDs] = useState<Dataset | null>(null);
-  const [loadMsg, setLoadMsg] = useState('loading…');
-  const [engineStatus, setEngineStatus] = useState('starting engine…');
+  const [loadMsg, setLoadMsg] = useState(t('loading…'));
+  const [engineStatus, setEngineStatus] = useState(t('starting engine…'));
   const engineRef = useRef<Engine | null>(null);
   const [engineReady, setEngineReady] = useState(0);
   const [stats, setStats] = useState<FitStats | null>(null);
@@ -78,7 +78,7 @@ export default function App() {
     const fq = new URLSearchParams(location.search).get('formats');
     const formatsUrl = fq === 'builtin' ? null : new URL(`${import.meta.env.BASE_URL}engines/f/eve_fit_formats_wasm.wasm`, location.href).href;
     Promise.all([Dataset.load(settings.engine.datasetUrl, setLoadMsg), initFormats(formatsUrl)])
-      .then(([d, fs]) => { d.lang = settings.lang; (window as any).__eveFormats = fs; (window as any).__eveFormatsRpc = formatsRpc(); setDs(d); }, (e) => setLoadMsg(`failed to load dataset: ${e.message}`));
+      .then(([d, fs]) => { d.lang = settings.lang; (window as any).__eveFormats = fs; (window as any).__eveFormatsRpc = formatsRpc(); setDs(d); }, (e) => setLoadMsg(`${t('failed to load dataset')}: ${e.message}`));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -188,8 +188,8 @@ export default function App() {
       if (ctx.ship) v = a?.ship;
       else if (ctx.module != null) v = (a?.modules ?? []).find((m, i) => (m.module_index ?? i) === ctx.module)?.attributes;
       else if (ctx.drone != null) v = (a?.drones ?? []).find((m, i) => (m.drone_index ?? i) === ctx.drone)?.attributes;
-      if (v) setFitted(v); else { setFitted(null); setFittedNote('this engine did not return fitted attribute values'); }
-    }, (e) => { if (live) { setFitted(null); setFittedNote(`fitted values unavailable: ${e.message}`); } });
+      if (v) setFitted(v); else { setFitted(null); setFittedNote(t('this engine did not return fitted attribute values')); }
+    }, (e) => { if (live) { setFitted(null); setFittedNote(`${t('fitted values unavailable')}: ${e.message}`); } });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [infoState, reqJson]);
@@ -271,9 +271,9 @@ export default function App() {
         <aside className="right"><Stats st={stats} busy={busy} ms={ms} error={calcErr} ds={ds} fit={fit} /><PriceBox ds={ds} fit={fit} /></aside>
       </main>
       <footer className="muted">
-        Engine via a swappable adapter (in-browser TS / WASM worker or HTTP). Data: <a href="https://github.com/EX-CT/eve-sde-pipeline/releases">EX-CT/eve-sde-pipeline</a> release.
-        EVE Online data © CCP hf. · <a href="https://github.com/EX-CT/eve-fit-web">source</a>
-        {build && <> · build <a href={build.run}>{build.web}</a> ({build.built_at?.replace('T', ' ').replace(/:\d\dZ$/, ' UTC')}) · dataset {build.dataset_tag} · engine D {build.engine_d} · engine F {build.engine_f ?? 'n/a'}</>}
+        {t('Engine via a swappable adapter (in-browser TS / WASM worker or HTTP). Data:')} <a href="https://github.com/EX-CT/eve-sde-pipeline/releases">EX-CT/eve-sde-pipeline</a> {t('release')}.
+        {t('EVE Online data © CCP hf.')} · <a href="https://github.com/EX-CT/eve-fit-web">{t('source')}</a>
+        {build && <> · {t('build')} <a href={build.run}>{build.web}</a> ({build.built_at?.replace('T', ' ').replace(/:\d\dZ$/, ' UTC')}) · {t('dataset')} {build.dataset_tag} · {t('engine')} D {build.engine_d} · {t('engine')} F {build.engine_f ?? 'n/a'}</>}
       </footer>
       {info != null && <ItemInfo ds={ds} id={info} fitted={fitted} fittedNote={fittedNote} onClose={() => setInfo(null)}
         overrides={fit ? Object.fromEntries((fit.overrides ?? []).filter((o) => o.type_id === info).map((o) => [o.attribute_id, o.value])) : undefined}

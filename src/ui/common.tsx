@@ -11,6 +11,9 @@ export const fmt = (v: number | null | undefined, d = 1): string => {
 };
 export const pctFmt = (v: number | null | undefined) => (v == null ? '—' : (v * 100).toFixed(1) + '%');
 
+/** Series names are English keys, optionally prefixed with "<fit name>: "; translate the key part. */
+export const seriesLabel = (n: string) => { const i = n.lastIndexOf(': '); return i < 0 ? t(n) : n.slice(0, i + 2) + t(n.slice(i + 2)); };
+
 export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
   return (
     <section className="section">
@@ -61,7 +64,7 @@ export function LineChart({ series, xLabel, yLabel, height = 260 }: { series: Ch
         <polyline key={s.name} fill="none" stroke={COLORS[(s.color ?? i) % COLORS.length]} strokeWidth={2} strokeDasharray={s.dash}
           points={s.points.filter((p) => Number.isFinite(p[1])).map((p) => `${sx(p[0]).toFixed(1)},${sy(p[1]).toFixed(1)}`).join(' ')} />
       ))}
-      {series.map((s, i) => <text key={'l' + s.name} x={W - R - 4} y={T + 14 + i * 14} textAnchor="end" fill={COLORS[(s.color ?? i) % COLORS.length]}>{s.dash ? '┄ ' : ''}{s.name}</text>)}
+      {series.map((s, i) => <text key={'l' + s.name} x={W - R - 4} y={T + 14 + i * 14} textAnchor="end" fill={COLORS[(s.color ?? i) % COLORS.length]}>{s.dash ? '┄ ' : ''}{seriesLabel(s.name)}</text>)}
     </svg>
   );
 }

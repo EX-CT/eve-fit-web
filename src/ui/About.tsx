@@ -23,12 +23,12 @@ export function About({ cfg, status, st, ds, build, graphBackend }: { cfg: Engin
       ? <>eve-fit-formats (WASM) · {commit((build?.engine_f_repo ?? 'EX-CT/eve-dogma').replace('EX-CT/', ''), build?.engine_f)} (crate eve-fit-formats-wasm)</>
       : <>{formatsStatus().label}{formatsStatus().note ? ` · ${formatsStatus().note}` : ''}</>}</span>],
     [t('Default backend'), <code>{build?.default_engine || DEFAULT_BACKEND}</code>],
-    ['Engine F (mainline; Rust → WASM, stats + graphs)', <>{commit((build?.engine_f_repo ?? 'EX-CT/eve-dogma').replace('EX-CT/', ''), build?.engine_f)} · <a href={`https://github.com/${build?.engine_f_repo ?? 'EX-CT/eve-dogma'}/tree/${build?.engine_f ?? 'main'}/${build?.engine_f_dir ?? ''}`}>{(build?.engine_f_repo ?? 'eve-dogma').replace('EX-CT/', '')}{build?.engine_f_dir ? `/${build.engine_f_dir}` : ''}</a> (crate eve-wasm) · LGPL-3.0-or-later</>],
-    ['Engine J (C++20 → WASM, optional speed reference)', <>{commit((build?.engine_j_repo ?? 'EX-CT/eve-dogma-lab').replace('EX-CT/', ''), build?.engine_j)} · <a href={`https://github.com/${build?.engine_j_repo ?? 'EX-CT/eve-dogma-lab'}/tree/${build?.engine_j ?? 'variant-j'}/${build?.engine_j_dir ?? ''}`}>{(build?.engine_j_repo ?? 'eve-dogma-lab').replace('EX-CT/', '')}{build?.engine_j_dir ? `/${build.engine_j_dir}` : ''}</a> · LGPL-3.0-or-later</>],
-    ['Engine D (TypeScript)', <>{commit('eve-dogma-lab', build?.engine_d)} · <a href={`${GH}/eve-dogma-lab/tree/variant-d`}>variant-d</a></>],
+    [t('Engine F (mainline; Rust → WASM, stats + graphs)'), <>{commit((build?.engine_f_repo ?? 'EX-CT/eve-dogma').replace('EX-CT/', ''), build?.engine_f)} · <a href={`https://github.com/${build?.engine_f_repo ?? 'EX-CT/eve-dogma'}/tree/${build?.engine_f ?? 'main'}/${build?.engine_f_dir ?? ''}`}>{(build?.engine_f_repo ?? 'eve-dogma').replace('EX-CT/', '')}{build?.engine_f_dir ? `/${build.engine_f_dir}` : ''}</a> (crate eve-wasm) · LGPL-3.0-or-later</>],
+    [t('Engine J (C++20 → WASM, optional speed reference)'), <>{commit((build?.engine_j_repo ?? 'EX-CT/eve-dogma-lab').replace('EX-CT/', ''), build?.engine_j)} · <a href={`https://github.com/${build?.engine_j_repo ?? 'EX-CT/eve-dogma-lab'}/tree/${build?.engine_j ?? 'variant-j'}/${build?.engine_j_dir ?? ''}`}>{(build?.engine_j_repo ?? 'eve-dogma-lab').replace('EX-CT/', '')}{build?.engine_j_dir ? `/${build.engine_j_dir}` : ''}</a> · LGPL-3.0-or-later</>],
+    [t('Engine D (TypeScript)'), <>{commit('eve-dogma-lab', build?.engine_d)} · <a href={`${GH}/eve-dogma-lab/tree/variant-d`}>variant-d</a></>],
     [t('Dataset'), <span className="about-dataset">SDE {raw.sde?.build} ({raw.sde?.release_date?.slice(0, 10)}) · r{raw.dataset_revision ?? 1} · {raw.generator}
       {build?.dataset_tag ? <> · <a href={`${GH}/eve-sde-pipeline/releases/tag/${build.dataset_tag}`}>{build.dataset_tag}</a></> : null}</span>],
-    [t('Site build'), <>{commit('eve-fit-web', build?.web)} · {local(build?.built_at)}{build?.run ? <> · <a href={build.run}>CI run</a></> : null}</>],
+    [t('Site build'), <>{commit('eve-fit-web', build?.web)} · {local(build?.built_at)}{build?.run ? <> · <a href={build.run}>{t('CI run')}</a></> : null}</>],
   ];
   return (
     <div className="about">
@@ -45,7 +45,7 @@ export function About({ cfg, status, st, ds, build, graphBackend }: { cfg: Engin
         <li><a href={`${GH}/eve-fit-mcp`}>eve-fit-mcp</a> — {t('MCP server for AI agents')}</li>
         <li><a href={`${GH}/eve-fit-docs`}>eve-fit-docs</a> — {t('design docs and licensing')}</li>
       </ul>
-      <p className="muted small">EVE Online data © CCP hf. Engines: LGPL-3.0-or-later; this site: MIT. <a href={`${GH}/eve-fit-docs/blob/main/LICENSING.md`}>LICENSING.md</a></p>
+      <p className="muted small">{t('EVE Online data © CCP hf.')} {t('Engines: LGPL-3.0-or-later; this site: MIT.')} <a href={`${GH}/eve-fit-docs/blob/main/LICENSING.md`}>LICENSING.md</a></p>
     </div>
   );
 }

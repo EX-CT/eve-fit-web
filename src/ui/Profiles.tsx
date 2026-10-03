@@ -1,6 +1,7 @@
 import { uid, type DamagePattern, type Fit, type Library, type TargetProfile } from '../fit/model';
 import { useState } from 'react';
 import { t } from '../i18n';
+const tr = t;
 
 const DT = ['em', 'thermal', 'kinetic', 'explosive'] as const;
 
@@ -16,7 +17,7 @@ export function Profiles({ lib, fit, onLib, onFit }: { lib: Library; fit: Fit | 
     <div className="profiles">
       {nSde > 0 && <label className="sdetoggle"><input type="checkbox" checked={showSde} onChange={(e) => setShowSde(e.target.checked)} /> {t('Show NPC profiles from the SDE')} ({nSde})</label>}
       <h4>{t('Damage patterns (incoming damage, for EHP / RAH)')}</h4>
-      <table className="grid small"><thead><tr><th></th><th>name</th>{DT.map((k) => <th key={k}>{k}</th>)}<th></th></tr></thead><tbody>
+      <table className="grid small"><thead><tr><th></th><th>{t('name')}</th>{DT.map((k) => <th key={k}>{t(k)}</th>)}<th></th></tr></thead><tbody>
         {dps.map((d) => (
           <tr key={d.id} className={fit?.damage_pattern_id === d.id ? 'sel' : ''}>
             <td><input type="radio" disabled={!fit} checked={fit?.damage_pattern_id === d.id} onChange={() => fit && onFit({ ...fit, damage_pattern_id: d.id })} /></td>
@@ -26,9 +27,9 @@ export function Profiles({ lib, fit, onLib, onFit }: { lib: Library; fit: Fit | 
           </tr>
         ))}
       </tbody></table>
-      <button onClick={() => saveD({ id: uid(), name: 'Custom pattern', em: 25, thermal: 25, kinetic: 25, explosive: 25 })}>+ damage pattern</button>
+      <button onClick={() => saveD({ id: uid(), name: tr('Custom pattern'), em: 25, thermal: 25, kinetic: 25, explosive: 25 })}>{t('+ damage pattern')}</button>
       <h4>{t('Target profiles (outgoing DPS, graphs)')}</h4>
-      <table className="grid small"><thead><tr><th></th><th>name</th>{DT.map((k) => <th key={k}>{k} res</th>)}<th>sig m</th><th>speed</th><th></th></tr></thead><tbody>
+      <table className="grid small"><thead><tr><th></th><th>{t('name')}</th>{DT.map((k) => <th key={k}>{t(k)} {t('res')}</th>)}<th>{t('sig m')}</th><th>{t('speed')}</th><th></th></tr></thead><tbody>
         {tps.map((t) => (
           <tr key={t.id}>
             <td><input type="radio" disabled={!fit} checked={fit?.target_profile_id === t.id} onChange={() => fit && onFit({ ...fit, target_profile_id: t.id })} /></td>
@@ -40,7 +41,7 @@ export function Profiles({ lib, fit, onLib, onFit }: { lib: Library; fit: Fit | 
           </tr>
         ))}
       </tbody></table>
-      <button onClick={() => saveT({ id: uid(), name: 'Custom target', em: 0.3, thermal: 0.3, kinetic: 0.3, explosive: 0.3, signature_radius: 150, max_velocity: 200, radius: 150 })}>+ target profile</button>
+      <button onClick={() => saveT({ id: uid(), name: tr('Custom target'), em: 0.3, thermal: 0.3, kinetic: 0.3, explosive: 0.3, signature_radius: 150, max_velocity: 200, radius: 150 })}>{t('+ target profile')}</button>
     </div>
   );
 }

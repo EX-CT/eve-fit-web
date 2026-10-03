@@ -40,20 +40,20 @@ export function CharacterEditor({ ds, lib, fit, onLib }: { ds: Dataset; lib: Lib
         <button onClick={clone}>{t('Clone')}</button>
         {!ch.builtin && <button onClick={() => { const { [ch.id]: _drop, ...rest } = lib.characters; void _drop; onLib({ ...lib, characters: rest }); setSel('all5'); }}>{t('Delete')}</button>}
       </div>
-      {ch.builtin ? <p className="muted">Built-in characters are read-only: clone to customise.</p> : (
+      {ch.builtin ? <p className="muted">{t('Built-in characters are read-only: clone to customise.')}</p> : (
         <div className="row">
           <input value={ch.name} onChange={(e) => save({ ...ch, name: e.target.value })} />
-          <label>default level <select value={ch.default_level} onChange={(e) => save({ ...ch, default_level: +e.target.value })}>{[0, 1, 2, 3, 4, 5].map((l) => <option key={l}>{l}</option>)}</select></label>
-          <label>security status <input className="qty wide" type="number" step={0.1} min={-10} max={5} value={ch.security_status ?? ''} onChange={(e) => save({ ...ch, security_status: e.target.value === '' ? null : +e.target.value })} /></label>
+          <label>{t('default level')} <select value={ch.default_level} onChange={(e) => save({ ...ch, default_level: +e.target.value })}>{[0, 1, 2, 3, 4, 5].map((l) => <option key={l}>{l}</option>)}</select></label>
+          <label>{t('security status')} <input className="qty wide" type="number" step={0.1} min={-10} max={5} value={ch.security_status ?? ''} onChange={(e) => save({ ...ch, security_status: e.target.value === '' ? null : +e.target.value })} /></label>
         </div>
       )}
       {fit && (
         <div className={missing.length ? 'warnbox' : 'okbox'}>
-          {missing.length ? <>Missing for this fit ({missing.length}): {missing.map(([s, l]) => `${ds.name(s)} ${l} (have ${level(s)})`).join(', ')}
-            {!ch.builtin && <button onClick={() => save({ ...ch, levels: { ...ch.levels, ...Object.fromEntries(missing) } })}>{t('Train required')}</button>}</> : <>All {req.size} required skills trained.</>}
+          {missing.length ? <>{t('Missing for this fit')} ({missing.length}): {missing.map(([s, l]) => `${ds.name(s)} ${l} (${t('have')} ${level(s)})`).join(', ')}
+            {!ch.builtin && <button onClick={() => save({ ...ch, levels: { ...ch.levels, ...Object.fromEntries(missing) } })}>{t('Train required')}</button>}</> : <>{t('All required skills trained')} ({req.size}).</>}
         </div>
       )}
-      <input className="search" placeholder="filter skills…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <input className="search" placeholder={t('filter skills…')} value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="skills">
         {groups.map(([g, skills]) => {
           const shown = skills.filter((s) => !ql || ds.name(s).toLowerCase().includes(ql) || ds.name(s, 'en').toLowerCase().includes(ql));

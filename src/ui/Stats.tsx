@@ -19,8 +19,8 @@ export function weaponName(w: any, ds?: Dataset | null, fit?: Fit | null): strin
 }
 
 export function Stats({ st, busy, ms, error, ds, fit }: { st: FitStats | null; busy: boolean; ms: number | null; error: string | null; ds?: Dataset | null; fit?: Fit | null }) {
-  if (error) return <div className="stats"><div className="error">Engine error: {error}</div></div>;
-  if (!st) return <div className="stats muted">{busy ? 'calculating…' : 'no stats yet'}</div>;
+  if (error) return <div className="stats"><div className="error">{tr('Engine error')}: {error}</div></div>;
+  if (!st) return <div className="stats muted">{busy ? tr('calculating…') : tr('no stats yet')}</div>;
   if (st.error) return <div className="stats"><div className="error">{st.error.code}: {st.error.message} {st.error.path}</div></div>;
   const r = st.resources ?? {}, o = st.offense ?? {}, d = st.defense ?? {}, c = st.capacitor ?? {}, n = st.navigation ?? {}, t = st.targeting ?? {};
   const res = (x: any, l: string) => (x && (x.total || x.used) ? <Bar label={l} used={x.used ?? 0} total={x.total ?? 0} /> : null);
@@ -34,12 +34,12 @@ export function Stats({ st, busy, ms, error, ds, fit }: { st: FitStats | null; b
       )}
       {(st.warnings?.length ?? 0) > 0 && <Section title={tr('Engine warnings')}><ul className="viol warn">{st.warnings.map((w: string, i: number) => <li key={i}>{w}</li>)}</ul></Section>}
       <Section title={tr('Resources')}>
-        {res(r.cpu, 'CPU')}{res(r.power, 'Powergrid')}{res(r.calibration, 'Calibration')}
-        {res(r.drone_bandwidth, 'Drone bandwidth')}{res(r.drone_bay, 'Drone bay m³')}{res(r.fighter_bay, 'Fighter bay m³')}{res(r.cargo, 'Cargo m³')}
+        {res(r.cpu, tr('CPU'))}{res(r.power, tr('Powergrid'))}{res(r.calibration, tr('Calibration'))}
+        {res(r.drone_bandwidth, tr('Drone bandwidth'))}{res(r.drone_bay, tr('Drone bay m³'))}{res(r.fighter_bay, tr('Fighter bay m³'))}{res(r.cargo, tr('Cargo m³'))}
         <div className="kv">
-          {r.hardpoints && <span>Turrets {r.hardpoints.turret?.used}/{r.hardpoints.turret?.total}</span>}
-          {r.hardpoints && <span>Launchers {r.hardpoints.launcher?.used}/{r.hardpoints.launcher?.total}</span>}
-          {r.fighter_tubes?.total?.total ? <span>Tubes {r.fighter_tubes.total.used}/{r.fighter_tubes.total.total}</span> : null}
+          {r.hardpoints && <span>{tr('Turrets')} {r.hardpoints.turret?.used}/{r.hardpoints.turret?.total}</span>}
+          {r.hardpoints && <span>{tr('Launchers')} {r.hardpoints.launcher?.used}/{r.hardpoints.launcher?.total}</span>}
+          {r.fighter_tubes?.total?.total ? <span>{tr('Tubes')} {r.fighter_tubes.total.used}/{r.fighter_tubes.total.total}</span> : null}
         </div>
       </Section>
       <Section title={tr('Offense')} right={<b>{fmt(o.total?.dps?.total)} dps</b>}>
@@ -48,11 +48,11 @@ export function Stats({ st, busy, ms, error, ds, fit }: { st: FitStats | null; b
           <tr><td>{tr('Drones')}</td><td className="num">{fmt(o.total?.drone_dps)}</td><td className="num">{fmt(o.total?.drone_volley)}</td></tr>
           {o.total?.fighter_dps ? <tr><td>{tr('Fighters')}</td><td className="num">{fmt(o.total?.fighter_dps)}</td><td className="num">{fmt(o.total?.fighter_volley)}</td></tr> : null}
           <tr><td><b>{tr('Total')}</b></td><td className="num"><b>{fmt(o.total?.dps?.total)}</b></td><td className="num"><b>{fmt(o.total?.volley?.total)}</b></td></tr>
-          {o.vs_target_profile && (o.vs_target_profile.dps !== o.total?.dps?.total) && <tr><td>vs target</td><td className="num">{fmt(o.vs_target_profile.dps)}</td><td className="num">{fmt(o.vs_target_profile.volley)}</td></tr>}
+          {o.vs_target_profile && (o.vs_target_profile.dps !== o.total?.dps?.total) && <tr><td>{tr('vs target')}</td><td className="num">{fmt(o.vs_target_profile.dps)}</td><td className="num">{fmt(o.vs_target_profile.volley)}</td></tr>}
         </tbody></table>
         <div className="kv">{DT.map((k) => <span key={k} className={'dt-' + k}>{DT_SHORT[k]} {fmt(o.total?.dps?.[k])}</span>)}</div>
         {(o.weapons ?? []).length > 0 && (
-          <table className="grid small"><thead><tr><th>{tr('Weapon')}</th><th>dps</th><th>{tr('Range')}</th><th>{tr('Cycle s')}</th></tr></thead><tbody>
+          <table className="grid small"><thead><tr><th>{tr('Weapon')}</th><th>{tr('dps')}</th><th>{tr('Range')}</th><th>{tr('Cycle s')}</th></tr></thead><tbody>
             {o.weapons.map((w: any, i: number) => (
               <tr key={i}><td className="wname">{weaponName(w, ds, fit)}</td><td className="num">{fmt(w.dps?.total)}</td>
                 <td className="num">{w.kind === 'missile' ? `${fmt((w.range_m ?? 0) / 1000)} km` : w.optimal_m != null ? `${fmt(w.optimal_m / 1000)}+${fmt((w.falloff_m ?? 0) / 1000)} km` : '—'}</td>
@@ -64,36 +64,36 @@ export function Stats({ st, busy, ms, error, ds, fit }: { st: FitStats | null; b
       <Section title={tr('Defense')} right={<b>{fmt(d.ehp?.total, 0)} EHP</b>}>
         <table className="grid"><thead><tr><th></th><th>HP</th><th>EHP</th>{DT.map((k) => <th key={k} className={'dt-' + k}>{DT_SHORT[k]}</th>)}</tr></thead><tbody>
           {(['shield', 'armor', 'hull'] as const).map((l) => (
-            <tr key={l}><td>{l}</td><td className="num">{fmt(d.hp?.[l], 0)}</td><td className="num">{fmt(d.ehp?.[l], 0)}</td>
+            <tr key={l}><td>{tr(l)}</td><td className="num">{fmt(d.hp?.[l], 0)}</td><td className="num">{fmt(d.ehp?.[l], 0)}</td>
               {DT.map((k) => <td key={k} className="num">{d.resonance?.[l]?.[k] != null ? pctFmt(1 - d.resonance[l][k]) : '—'}</td>)}</tr>
           ))}
         </tbody></table>
         {d.tank && (
-          <table className="grid small"><thead><tr><th>tank HP/s</th><th>raw</th><th>effective</th><th>sustained</th><th>sust. eff.</th></tr></thead><tbody>
+          <table className="grid small"><thead><tr><th>{tr('tank HP/s')}</th><th>{tr('raw')}</th><th>{tr('effective')}</th><th>{tr('sustained')}</th><th>{tr('sust. eff.')}</th></tr></thead><tbody>
             {(['passive_shield', 'shield_repair', 'armor_repair', 'hull_repair'] as const).map((k) => (
-              (d.tank.raw?.[k] || d.tank.effective?.[k]) ? <tr key={k}><td>{k.replace('_', ' ')}</td><td className="num">{fmt(d.tank.raw?.[k])}</td><td className="num">{fmt(d.tank.effective?.[k])}</td>
+              (d.tank.raw?.[k] || d.tank.effective?.[k]) ? <tr key={k}><td>{tr(k.replace('_', ' '))}</td><td className="num">{fmt(d.tank.raw?.[k])}</td><td className="num">{fmt(d.tank.effective?.[k])}</td>
                 <td className="num">{fmt(d.tank.sustained?.[k])}</td><td className="num">{fmt(d.tank.sustained_effective?.[k])}</td></tr> : null
             ))}
           </tbody></table>
         )}
       </Section>
-      <Section title={tr('Capacitor')} right={<b>{c.stable ? `stable ${fmt(c.stable_percent)}%` : c.depletes_in_s != null ? `lasts ${fmtTime(c.depletes_in_s)}` : ''}</b>}>
-        <div className="kv"><span>{fmt(c.capacity, 0)} GJ</span><span>recharge {fmt(c.recharge_time_s)} s</span><span>peak +{fmt(c.peak_recharge_gj_s, 2)} GJ/s</span>
-          <span>use −{fmt(c.use_gj_s, 2)} GJ/s</span>{c.injected_gj_s ? <span>injected +{fmt(c.injected_gj_s, 2)}</span> : null}<span>Δ {fmt(c.delta_gj_s, 2)} GJ/s</span></div>
+      <Section title={tr('Capacitor')} right={<b>{c.stable ? `${tr('stable')} ${fmt(c.stable_percent)}%` : c.depletes_in_s != null ? `${tr('lasts')} ${fmtTime(c.depletes_in_s)}` : ''}</b>}>
+        <div className="kv"><span>{fmt(c.capacity, 0)} GJ</span><span>{tr('recharge')} {fmt(c.recharge_time_s)} s</span><span>{tr('peak')} +{fmt(c.peak_recharge_gj_s, 2)} GJ/s</span>
+          <span>{tr('use')} −{fmt(c.use_gj_s, 2)} GJ/s</span>{c.injected_gj_s ? <span>{tr('injected')} +{fmt(c.injected_gj_s, 2)}</span> : null}<span>Δ {fmt(c.delta_gj_s, 2)} GJ/s</span></div>
       </Section>
       <Section title={tr('Navigation')}>
-        <div className="kv"><span>{fmt(n.max_velocity)} m/s</span><span>align {fmt(n.align_time_s, 2)} s</span><span>sig {fmt(n.signature_radius, 0)} m</span>
-          <span>mass {fmt(n.mass, 0)} kg</span><span>agility {fmt(n.agility, 4)}</span><span>warp {fmt(n.warp_speed_au_s, 2)} AU/s</span>
-          {n.warp_scramble_status ? <span>warp core {n.warp_scramble_status > 0 ? '+' : ''}{n.warp_scramble_status}</span> : null}</div>
+        <div className="kv"><span>{fmt(n.max_velocity)} m/s</span><span>{tr('align')} {fmt(n.align_time_s, 2)} s</span><span>{tr('sig')} {fmt(n.signature_radius, 0)} m</span>
+          <span>{tr('mass')} {fmt(n.mass, 0)} kg</span><span>{tr('agility')} {fmt(n.agility, 4)}</span><span>{tr('warp')} {fmt(n.warp_speed_au_s, 2)} AU/s</span>
+          {n.warp_scramble_status ? <span>{tr('warp core')} {n.warp_scramble_status > 0 ? '+' : ''}{n.warp_scramble_status}</span> : null}</div>
       </Section>
       <Section title={tr('Targeting')}>
-        <div className="kv"><span>{t.max_targets} targets</span><span>{fmt((t.max_range_m ?? 0) / 1000)} km</span><span>scan res {fmt(t.scan_resolution, 0)} mm</span>
-          <span>{t.sensor_type} {fmt(t.sensor_strength, 1)}</span><span>probe size {fmt(t.probe_size, 2)}</span>
-          {t.jam_chance_percent ? <span className="bad">jam chance {fmt(t.jam_chance_percent)}%</span> : null}</div>
+        <div className="kv"><span>{t.max_targets} {tr('targets')}</span><span>{fmt((t.max_range_m ?? 0) / 1000)} km</span><span>{tr('scan res')} {fmt(t.scan_resolution, 0)} mm</span>
+          <span>{tr(t.sensor_type ?? '')} {fmt(t.sensor_strength, 1)}</span><span>{tr('probe size')} {fmt(t.probe_size, 2)}</span>
+          {t.jam_chance_percent ? <span className="bad">{tr('jam chance')} {fmt(t.jam_chance_percent)}%</span> : null}</div>
         {t.lock_time_s && <div className="kv small">{Object.entries(t.lock_time_s).filter(([, v]) => v != null).map(([k, v]) => <span key={k}>{k.replace('sig_', '')}: {fmt(v as number, 2)} s</span>)}</div>}
       </Section>
       <Section title={tr('Drones')}>
-        <div className="kv"><span>active {st.drones?.active}/{st.drones?.max_active}</span><span>control range {fmt((st.drones?.control_range_m ?? 0) / 1000)} km</span></div>
+        <div className="kv"><span>{tr('active')} {st.drones?.active}/{st.drones?.max_active}</span><span>{tr('control range')} {fmt((st.drones?.control_range_m ?? 0) / 1000)} km</span></div>
       </Section>
       {st.remote && <Section title={tr('Remote assistance')}><div className="kv">{Object.entries(st.remote).map(([k, v]) => <span key={k}>{k}: {fmt(v as number, 2)}</span>)}</div></Section>}
       {st.mining && <Section title={tr('Mining')}><div className="kv">{Object.entries(st.mining).map(([k, v]) => <span key={k}>{k}: {fmt(v as number, 3)}</span>)}</div></Section>}
