@@ -159,6 +159,8 @@ jobs:
         run: |
           git clone -q --filter=blob:none https://github.com/EX-CT/eve-dogma-bench benchsuites && git -C benchsuites checkout -q "$BENCH_SUITES_SHA"
           # batch/data (synthetic price files) is gitignored in the bench; its generator is deterministic (tracked files unchanged)
+          # the bench's price expectations read the r5 dataset (= the site's dataset, DATASET_TAG)
+          export EVE_DOGMA_DATASET_R5="$GITHUB_WORKSPACE/public/data/dataset.json.gz"
           (cd benchsuites && python3 batch/tools/gen_gap_cases.py)
           npx vite preview --host 127.0.0.1 --port 4177 --strictPort &
           for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:4177/eve-fit-web/ && break; sleep 1; done
