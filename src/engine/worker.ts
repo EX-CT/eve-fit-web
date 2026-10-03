@@ -10,6 +10,8 @@ type CalcFn = (req: unknown) => unknown;
 let calcFn: CalcFn | null = null;
 /** The full engine RPC response ({id, result} or {id, error}) for any method (batch, prices_load, ...); WASM backends. */
 let rpcRawFn: ((method: string, params: unknown) => any) | null = null;
+/** The same response as the engine's JSON text (number formatting as the engine wrote it; tools/browser-rpc.mjs). */
+let rpcTextFn: ((method: string, params: unknown) => string) | null = null;
 /** JSONL-style RPC ({id, method, params} -> {id, result}) when the module exports `rpc` (graph-capable builds). */
 let rpcFn: ((method: string, params: unknown) => unknown) | null = null;
 
@@ -32,7 +34,8 @@ async function initEmjs(engineUrl: string, datasetUrl: string): Promise<string> 
   const calc = M.cwrap('evej_calc', 'string', ['string']);
   const rpc = M.cwrap('evej_rpc', 'string', ['string']);
   calcFn = (req) => JSON.parse(calc(JSON.stringify(req)));
-  rpcRawFn = (method, params) => JSON.parse(rpc(JSON.stringify({ id: 1, method, params })));
+  rpcTextFn = (method, params) => rpc(JSON.stringify({ id: 1, method, params }));
+  rpcRawFn = (method, params) => JSON.parse(rpcTextFn!(method, params));
   rpcFn = (method, params) => { const r = rpcRawFn!(method, params); return r.result ?? r.error ?? null; };
   let label = 'eve-dogma-j (wasm)';
   try { const m: any = rpcFn('meta', {}); if (m?.engine) label = `${m.engine} (wasm) · SDE ${m.sde_build ?? '?'}`; } catch { /* ignore */ }
@@ -58,7 +61,8 @@ async function initWasm(wasmUrl: string): Promise<string> {
     return out;
   };
   calcFn = (req) => JSON.parse(call('calc', JSON.stringify(req)));
-  rpcRawFn = typeof x.rpc === 'function' ? (method, params) => JSON.parse(call('rpc', JSON.stringify({ id: 1, method, params }))) : null;
+  rpcTextFn = typeof x.rpc === 'function' ? (method, params) => call('rpc', JSON.stringify({ id: 1, method, params })) : null;
+  rpcRawFn = rpcTextFn ? (method, params) => JSON.parse(rpcTextFn!(method, params)) : null;
   rpcFn = rpcRawFn ? (method, params) => { const resp = rpcRawFn!(method, params); return resp.result ?? resp.error ?? null; } : null;
   let label = 'eve-wasm (F)';
   try { const probe: any = calcFn({ schema_version: 1, ship: { type_id: 587 } }); if (probe?.meta?.engine) label = `${probe.meta.engine} (wasm) · SDE ${probe.meta.sde_build}`; } catch { /* ignore */ }
@@ -75,6 +79,9 @@ self.onmessage = async (ev: MessageEvent) => {
     } else if (op === 'rpc') {
       if (!rpcFn) throw new Error('engine has no rpc export');
       (self as any).postMessage({ id, result: rpcFn(ev.data.method, ev.data.params) });
+    } else if (op === 'rpc_text') {
+      if (!rpcTextFn) throw new Error('engine has no rpc export');
+      (self as any).postMessage({ id, result: rpcTextFn(ev.data.method, ev.data.params) });
     } else if (op === 'rpc_raw') {
       if (!rpcRawFn) throw new Error('engine has no rpc export');
       (self as any).postMessage({ id, result: rpcRawFn(ev.data.method, ev.data.params) });

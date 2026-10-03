@@ -80,6 +80,8 @@ class WorkerEngine implements Engine {
   async graphSpecs() { try { return asSpecs(await this.call({ op: 'rpc', method: 'graph_specs', params: {} })); } catch { return null; } }
   /** Any engine RPC method, full response ({id, result} | {id, error}); used by tools/browser-rpc.mjs (bench batch, prices). */
   rpcRaw(method: string, params: unknown): Promise<any> { return this.call({ op: 'rpc_raw', method, params }); }
+  /** The engine's response text as written (exact number formatting; bench tooling). */
+  rpcText(method: string, params: unknown): Promise<string> { return this.call({ op: 'rpc_text', method, params }); }
   dispose() { this.w?.terminate(); this.w = null; }
 }
 
@@ -130,6 +132,7 @@ class GraphSplitEngine implements Engine {
   init() { return this.primary.init(); }
   calc(request: unknown) { return this.primary.calc(request); }
   get rpcRaw() { return this.primary.rpcRaw?.bind(this.primary); }
+  get rpcText() { return (this.primary as WorkerEngine).rpcText?.bind(this.primary); }
   private second() {
     return (this.g ??= (async () => {
       const e = this.makeGraph();
