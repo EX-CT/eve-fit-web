@@ -51,6 +51,16 @@ jobs:
           else echo "no presets.json in $TAG: implant sets / NPC profiles disabled" >> "$GITHUB_STEP_SUMMARY"; fi
           echo "DATASET_TAG=$TAG" >> "$GITHUB_ENV"
           echo "dataset: $TAG ($(ls dl/dataset-*))" >> "$GITHUB_STEP_SUMMARY"
+      - name: Latest market price snapshot (EX-CT/eve-market-prices release; served with the site for "update prices")
+        # release assets are not CORS-readable from the browser, so the site serves its own copy (refreshed by the schedule)
+        run: |
+          PTAG=$(gh release view -R EX-CT/eve-market-prices --json tagName --jq .tagName)
+          mkdir -p public/prices dlp
+          gh release download "$PTAG" -R EX-CT/eve-market-prices -D dlp -p 'prices-*.json.gz' -p SHA256SUMS
+          (cd dlp && sha256sum -c --ignore-missing SHA256SUMS)
+          cp dlp/prices-*.json.gz public/prices/latest.json.gz
+          echo "PRICES_SNAPSHOT=$PTAG" >> "$GITHUB_ENV"
+          echo "price snapshot: $PTAG" >> "$GITHUB_STEP_SUMMARY"
       - name: Engine D (TypeScript, browser bundle)
         run: |
           git clone -q --depth 1 -b variant-d https://github.com/EX-CT/eve-dogma-lab lab-d
@@ -107,8 +117,8 @@ jobs:
           if [ -n "$need" ] && [ ! -f "$need" ]; then echo "default backend $DEFAULT_ENGINE: $need was not built" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
           if [ "$DEFAULT_ENGINE" = wasm-j-worker ] && [ ! -f public/engines/f/eve_wasm.wasm ]; then echo "default backend wasm-j-worker needs F for graphs (GRAPH_FALLBACK), which was not built" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; fi
           echo "VITE_DEFAULT_ENGINE=$DEFAULT_ENGINE" >> "$GITHUB_ENV"
-          printf '{"dataset_tag":"%s","engine_d":"%s","engine_f":"%s","engine_f_repo":"%s","engine_f_dir":"%s","engine_j":"%s","engine_j_repo":"%s","engine_j_dir":"%s","web":"%s","built_at":"%s","default_engine":"%s","run":"%s"}\n' \
-            "$DATASET_TAG" "${ENGINE_D:-}" "${ENGINE_F:-}" "${ENGINE_F_REPO:-}" "${ENGINE_F_DIR:-}" "${ENGINE_J:-}" "${ENGINE_J_REPO:-}" "${ENGINE_J_DIR:-}" "${GITHUB_SHA::7}" "$(date -u +%FT%TZ)" "$DEFAULT_ENGINE" \
+          printf '{"dataset_tag":"%s","engine_d":"%s","engine_f":"%s","engine_f_repo":"%s","engine_f_dir":"%s","engine_j":"%s","engine_j_repo":"%s","engine_j_dir":"%s","web":"%s","built_at":"%s","default_engine":"%s","prices_snapshot":"%s","run":"%s"}\n' \
+            "$DATASET_TAG" "${ENGINE_D:-}" "${ENGINE_F:-}" "${ENGINE_F_REPO:-}" "${ENGINE_F_DIR:-}" "${ENGINE_J:-}" "${ENGINE_J_REPO:-}" "${ENGINE_J_DIR:-}" "${GITHUB_SHA::7}" "$(date -u +%FT%TZ)" "$DEFAULT_ENGINE" "${PRICES_SNAPSHOT:-}" \
             "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > public/build-info.json
           cat public/build-info.json
       - run: npm run build
@@ -169,7 +179,20 @@ jobs:
           out="$RUNNER_TEMP/bench-suites-wasm-worker"
           BROWSER_RPC=http://127.0.0.1:8899 bash benchsuites/tools/run_all_suites.sh "$GITHUB_WORKSPACE/tools/browser-engine.mjs" "$out" browser-wasm-worker
           echo '### Bench pending-1.11 suites in the browser (wasm-worker = F)' >> "$GITHUB_STEP_SUMMARY"
-          python3 benchsuites/tools/check_no_regress.py --baseline benchsuites/baselines/f.json --run-dir "$out" 2>&1 | tee "$out/no-regress.txt" | tee -a "$GITHUB_STEP_SUMMARY"
+          # baselines/f.json is native F. The browser build differs only where it must: `version.target` is
+          # wasm32-unknown-unknown, so sde version_cli_fields / version_rpc_fields (target == native) are taken out of the
+          # baseline for this gate (listed in the step summary); every other case of every suite is gated as is.
+          python3 - benchsuites/baselines/f.json "$out/baseline-web.json" <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json, sys
+          b = json.load(open(sys.argv[1])); s = b["suites"].get("sde")
+          WASM_TARGET = ["version_cli_fields", "version_rpc_fields"]
+          if s:
+              drop = [i for i in WASM_TARGET if i in s["passed_ids"]]
+              s["passed_ids"] = [i for i in s["passed_ids"] if i not in drop]; s["passed"] -= len(drop)
+              print(f"browser-inherent (version.target = wasm32-unknown-unknown), not gated: sde {', '.join(drop) or 'none'}")
+          json.dump(b, open(sys.argv[2], "w"), indent=1)
+          PY
+          python3 benchsuites/tools/check_no_regress.py --baseline "$out/baseline-web.json" --run-dir "$out" 2>&1 | tee "$out/no-regress.txt" | tee -a "$GITHUB_STEP_SUMMARY"
         shell: bash -eo pipefail {0}
         env: { CHROME: /usr/bin/google-chrome }
       - name: Upload bench suite results (per suite)

@@ -21,4 +21,4 @@ EMSDK_VERSION=6.0.11
 DOGMA_BENCH_SHA=d2edf989a7c3ba5afbe54ca6fe85a5a285af8640
 # Full eve-dogma-bench suite set (branch pending-1.11: core, ext + ext/unit, ext_rpc, batch, effects, graphs, cap, mutated,
 # formats; tools/run_all_suites.sh) run in headless Chrome against F; gate = tools/check_no_regress.py vs baselines/f.json.
-BENCH_SUITES_SHA=1fd7e37907e968aa76d57a7cf372b8622b935f21
+BENCH_SUITES_SHA=7192f6677973b6ccecf496c06817f39e003a2f55
