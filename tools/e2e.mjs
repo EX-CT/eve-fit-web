@@ -1,6 +1,9 @@
 // End-to-end check of the main UI flows against a running site (any engine backend):
 //   node tools/e2e.mjs <url> [engine-id]      (url may carry a query, e.g. ...?http=http://127.0.0.1:8787 for engine http)
 import puppeteer from 'puppeteer-core';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 const url = process.argv[2] ?? 'http://127.0.0.1:4173/eve-fit-web/';
 const engine = process.argv[3] ?? 'ts-worker';
@@ -48,6 +51,9 @@ await p.setViewport({ width: 1500, height: 1000 });
 const errors = [];
 p.on('pageerror', (e) => errors.push(e.message));
 const results = [];
+// confirm() / prompt() answers for the fit library (next prompt value, else accept)
+let promptAnswer = null;
+p.on('dialog', (d) => { const v = promptAnswer; promptAnswer = null; d.accept(v ?? undefined); });
 // Check names: stable id `web.e2e.<slug>` + description (docs/test-ids.md maps ids to the old names).
 const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail }); };
 const stats = () => p.evaluate(() => window.__lastStats);
@@ -363,6 +369,168 @@ await langSel('en');
 const latin = (xs) => xs.filter((x) => /[a-z]{3,}/.test(x.replace(/DPS|EFT|DNA|ESI|JSON|XML|Ctrl/g, '')));
 const zhAll = [...zhUi.tabs, ...zhUi.sections, ...zhUi.slots, zhIo.h ?? '', ...zhIo.btns];
 check('web.e2e.zh-ui: zh-CN UI (tabs, stats sections, slots, import/export dialog) has no untranslated labels', zhUi.tabs.includes('假设分析') && zhUi.tabs.includes('对比') && zhUi.sections.length > 3 && zhIo.h === '导入 / 导出' && latin(zhAll).length === 0, latin(zhAll).join(' | ') || `${zhAll.length} labels`);
+// ---- fit library (IndexedDB): Pyfa saved-fits database import, folders / tags, rename, duplicate, delete, exports,
+// backup / restore, persistence across reloads, DNA import, migration of the localStorage library ----
+{
+const FIX = new URL('../src/test/fixtures/', import.meta.url).pathname;
+const pyfaStats = JSON.parse(fs.readFileSync(FIX + 'pyfa-saveddata.stats.json', 'utf8'));
+const PRECISE = engine !== 'ts-worker'; // variant D (TS) is not held to Pyfa's numbers (web-bench gates F)
+const libFits = () => p.evaluate(() => [...document.querySelectorAll('.lib-fit')].map((l) => ({ id: l.dataset.fitId, name: l.dataset.fitName, folder: l.closest('details')?.dataset.folder ?? null, tags: [...l.querySelectorAll('.tag')].map((x) => x.textContent) })));
+const openFit = async (name, ship) => {
+  const id = await p.evaluate((n) => { const el = document.querySelector(`.lib-fit[data-fit-name="${n}"]`); el?.click(); return el?.dataset.fitId; }, name);
+  return p.waitForFunction((sh, fid) => window.__lastStatsFit === fid && window.__lastStats?.ship?.name === sh && !window.__lastStats.error && window.__lastStats, { timeout: 60000 }, ship, id).then((h) => h.jsonValue()).catch(() => null);
+};
+await clickText('.left .tabs button', 'Fits');
+await p.evaluate(() => { const i = document.querySelector('.fitbrowser .search'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, ''); i.dispatchEvent(new Event('input', { bubbles: true })); });
+const st0 = await p.evaluate(() => ({ kind: document.querySelector('.lib-status')?.dataset.kind, fits: document.querySelectorAll('.lib-fit').length }));
+await (await p.$('.lib-import-file')).uploadFile(FIX + 'pyfa-saveddata.db');
+const pi = await p.waitForFunction(() => window.__lastLibraryImport, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
+await p.select('.lib-mode', 'folder');
+let lf = await libFits();
+const pyfaNames = Object.keys(pyfaStats);
+check('web.e2e.pyfa-db-import: Pyfa saveddata.db import (sql.js): every fit, character, profiles, implant set, into folder "Pyfa import"',
+  pi && pi.kind === 'Pyfa database' && pyfaNames.every((n) => lf.some((f) => f.name === n && f.folder === 'Pyfa import')) && pi.characters === 1 && pi.damagePatterns === 1 && pi.targetProfiles === 1 && pi.implantSets === 1 && pi.warnings.length === 0,
+  pi ? `${pi.fits.join(', ')}; warnings ${pi.warnings.length}` : 'no import');
+// Pyfa's own numbers for the same database (pyfa_stats.py): its dps is against the fit's target profile
+const cmp = [];
+for (const n of pyfaNames) {
+  const st = await openFit(n, n.split(' ')[1]);
+  const want = pyfaStats[n];
+  const got = st && { dps: st.offense?.vs_target_profile?.dps ?? st.offense?.total?.dps?.total, ehp: st.defense?.ehp?.total, max_velocity: st.navigation?.max_velocity, cpu_used: st.resources?.cpu?.used };
+  const ok = got && ['dps', 'ehp', 'max_velocity', 'cpu_used'].every((k) => Math.abs(got[k] - want[k]) <= 1e-6 * Math.max(1, Math.abs(want[k])));
+  cmp.push({ n, ok, got, want });
+}
+check('web.e2e.pyfa-db-stats: Pyfa database fits compute Pyfa\'s numbers (dps vs target profile, EHP vs damage pattern, speed with a projected web, CPU)',
+  PRECISE ? cmp.every((c) => c.ok) : cmp.every((c) => c.got), cmp.map((c) => `${c.n}: ${c.got ? c.got.dps.toFixed(2) : '—'}/${c.want.dps.toFixed(2)} dps${c.ok ? '' : ' ✗'}`).join('; '));
+await openFit('Pyfa Vexor', 'Vexor');
+const links = await p.evaluate(() => ({ tab: [...document.querySelectorAll('.center .tabs button')].map((b) => b.textContent).find((x) => x.includes('(')) ?? '', char: document.querySelector('.fithead select[title=Character]')?.selectedOptions[0]?.textContent }));
+check('web.e2e.pyfa-db-links: projected fit and fleet booster fit links, saved character', links.tab.includes('(2)') && links.char?.includes('Pyfa Pilot'), JSON.stringify(links));
+
+// rename + move + tags (one edit), tag filter, folder rename
+const rif = lf.find((f) => f.name === 'Pyfa Rifter');
+await p.evaluate((id) => document.querySelector(`.lib-fit[data-fit-id="${id}"] .lib-rename`).click(), rif.id);
+const setIn = (sel, v) => p.evaluate((s2, v2) => { const i = document.querySelector(s2); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, v2); i.dispatchEvent(new Event('input', { bubbles: true })); }, sel, v);
+await setIn('.lib-edit-name', 'Renamed Rifter'); await setIn('.lib-edit-folder', 'PvP/Frigates'); await setIn('.lib-edit-tags', 'solo, brawler');
+await p.click('.lib-edit-save');
+await new Promise((r) => setTimeout(r, 300));
+lf = await libFits();
+const rr = lf.find((f) => f.id === rif.id);
+check('web.e2e.library-rename-move-tag: rename, move to a nested folder and tag a fit', rr && rr.name === 'Renamed Rifter' && rr.folder === 'PvP/Frigates' && rr.tags.join() === 'brawler,solo', JSON.stringify(rr));
+await p.evaluate(() => document.querySelector('.lib-tags button[data-tag="solo"]').click());
+const tagged = (await libFits()).map((f) => f.name);
+await p.evaluate(() => document.querySelector('.lib-tags button[data-tag="solo"]').click());
+await p.type('.fitbrowser .search', 'pyfa thanatos');
+const found = (await libFits()).map((f) => f.name);
+await setIn('.fitbrowser .search', '');
+check('web.e2e.library-search-tags: tag filter and search (ship name)', tagged.join() === 'Renamed Rifter' && found.join() === 'Pyfa Thanatos', `${tagged} | ${found}`);
+promptAnswer = 'PvP/Small';
+await p.evaluate(() => document.querySelector('details.lib-folder[data-folder="PvP/Frigates"] .lib-folder-rename').click());
+await new Promise((r) => setTimeout(r, 300));
+lf = await libFits();
+check('web.e2e.library-folder-rename: renaming a folder moves its fits', lf.find((f) => f.id === rif.id)?.folder === 'PvP/Small', lf.find((f) => f.id === rif.id)?.folder);
+
+// duplicate + delete
+const nBefore = lf.length;
+await p.evaluate((id) => document.querySelector(`.lib-fit[data-fit-id="${id}"] .lib-dup`).click(), rif.id);
+await new Promise((r) => setTimeout(r, 300));
+lf = await libFits();
+const dup = lf.find((f) => f.name === 'Renamed Rifter (copy)');
+const dupOk = lf.length === nBefore + 1 && dup && dup.folder === 'PvP/Small' && dup.tags.join() === 'brawler,solo';
+await p.evaluate((id) => document.querySelector(`.lib-fit[data-fit-id="${id}"] .lib-del`).click(), dup?.id);
+await new Promise((r) => setTimeout(r, 300));
+lf = await libFits();
+check('web.e2e.library-duplicate-delete: duplicate keeps folder and tags; delete removes the fit', dupOk && lf.length === nBefore && !lf.some((f) => f.name.endsWith('(copy)')), `${nBefore} -> ${lf.length}`);
+
+// bulk export: selected fits as one EVE XML (Pyfa backup shape) and as multi-fit EFT; XML re-import
+for (const n of ['Pyfa Vexor', 'Pyfa Svipul']) await p.evaluate((nm) => document.querySelector(`.lib-fit[data-fit-name="${nm}"] .lib-sel`).click(), n);
+await p.click('.lib-export-xml');
+const xe = await p.evaluate(() => window.__lastLibraryExport);
+await p.click('.lib-export-eft');
+const ee = await p.evaluate(() => window.__lastLibraryExport);
+const xmlFile = path.join(os.tmpdir(), `e2e-library-${process.pid}.xml`);
+fs.writeFileSync(xmlFile, xe?.text ?? '');
+await p.select('.lib-import-folder', 'Pyfa import');
+await (await p.$('.lib-import-file')).uploadFile(xmlFile);
+await p.waitForFunction(() => /e2e-library-.*XML, 2 /.test(document.querySelector('.lib-msg')?.textContent ?? ''), { timeout: 30000 }).catch(() => null);
+await new Promise((r) => setTimeout(r, 300));
+const xmsg = await p.evaluate(() => document.querySelector('.lib-msg')?.textContent ?? '');
+lf = await libFits();
+check('web.e2e.library-export-xml-eft: bulk export (one EVE XML with 2 fittings, multi-fit EFT) and XML re-import',
+  xe?.fits === 2 && (xe.text.match(/<fitting /g) ?? []).length === 2 && /<fittings count="2">/.test(xe.text) && ee?.format === 'eft' && (ee.text.match(/^\[[^\]\n]+, [^\]\n]+\]$/gm) ?? []).length === 2 && lf.filter((f) => f.name === 'Pyfa Svipul').length === 2, xmsg);
+
+// JSON backup -> restore (twice: no duplicates)
+await p.click('.lib-backup');
+const bk = await p.evaluate(() => window.__lastLibraryExport);
+const bkFile = path.join(os.tmpdir(), `e2e-backup-${process.pid}.json`);
+fs.writeFileSync(bkFile, bk?.text ?? '');
+const nb = (await libFits()).length;
+await (await p.$('.lib-import-file')).uploadFile(bkFile);
+await new Promise((r) => setTimeout(r, 800));
+const na = (await libFits()).length;
+const bj = JSON.parse(bk?.text || '{}');
+check('web.e2e.library-backup-restore: JSON backup (v2: folders, tags) restores without duplicating fits', bj.version === 2 && bj.lib?.folders?.includes('PvP/Small') && Object.keys(bj.lib.fits).length === nb && na === nb, `${nb} fits, after restore ${na}`);
+
+// DNA import (dialog): a fit's DNA, plain and as an in-game fitting link; each gives the same
+// fit back (DNA round trip, drones launched, same stats for both)
+const dnaImport = async (text) => {
+  await clickText('header button', 'Import / export');
+  await p.evaluate((t) => { const ta = document.querySelector('textarea.eft'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(ta, t); ta.dispatchEvent(new Event('input', { bubbles: true })); }, text);
+  const prev = await p.evaluate(() => window.__lastStatsFit);
+  await clickText('.dialog button', 'Import');
+  const st = await p.waitForFunction((pf) => window.__lastStatsFit !== pf && window.__lastStats?.offense && window.__lastStats, { timeout: 60000 }, prev).then((h) => h.jsonValue()).catch(() => null);
+  await clickText('header button', 'Import / export');
+  await clickText('.dialog button', 'Export DNA');
+  const back = await p.evaluate(() => document.querySelector('textarea.eft').value);
+  await clickText('.dialog button', 'Close');
+  return { st, back };
+};
+await clickText('.left .tabs button', 'Fits');
+const rs = await openFit('Renamed Rifter', 'Rifter');
+await clickText('header button', 'Import / export');
+await clickText('.dialog button', 'Export DNA');
+const rdna = await p.evaluate(() => document.querySelector('textarea.eft').value);
+await clickText('.dialog button', 'Close');
+const d1 = await dnaImport(rdna);
+const d2 = await dnaImport(`<url=fitting:${rdna}>DNA link Rifter</url>`);
+const dOk = (d) => d.st && d.st.ship?.name === 'Rifter' && d.back === rdna && d.st.offense.total.drone_dps > 0 && d.st.modules?.length === rs?.modules?.length && /(^|:)21898;/.test(rdna);
+check('web.e2e.dna-import: DNA import (plain and fitting link) round trip: same DNA back, ship, modules, charges, drones launched',
+  dOk(d1) && dOk(d2) && Math.abs(d1.st.offense.total.dps.total - d2.st.offense.total.dps.total) < 1e-9,
+  `${rdna}: ${d1.st?.modules?.length}/${rs?.modules?.length} modules, dna ${d1.back === dna ? '=' : '≠'} / ${d2.back === dna ? '=' : '≠'}, dps ${d1.st?.offense?.total?.dps?.total} / ${d2.st?.offense?.total?.dps?.total}`);
+
+// persistence: flush the IndexedDB writes, reload, the library is still there (names, folders, tags, links)
+await clickText('.left .tabs button', 'Fits');
+const before = (await libFits()).map((f) => `${f.name}|${f.folder}|${f.tags}`).sort();
+await p.evaluate(() => window.__eveStore.flush());
+// same page without ?eft= (that would import the e2e Vexor again)
+await p.goto(`${url}${sep}engine=${engine}`, { waitUntil: 'networkidle0', timeout: 120000 });
+await p.waitForFunction(() => window.__lastStats?.offense, { timeout: 120000 });
+await clickText('.left .tabs button', 'Fits');
+await p.select('.lib-mode', 'folder');
+const after = (await libFits()).map((f) => `${f.name}|${f.folder}|${f.tags}`).sort();
+const kind = await p.evaluate(() => document.querySelector('.lib-status')?.dataset.kind);
+const vx = await openFit('Pyfa Vexor', 'Vexor');
+check('web.e2e.library-reload-persistence: fits, folders and tags survive a reload (IndexedDB)', st0.kind === 'indexeddb' && kind === 'indexeddb' && after.length === before.length && after.join('\n') === before.join('\n') && after.some((x) => x.startsWith('Renamed Rifter|PvP/Small|brawler,solo')) && (!PRECISE || Math.abs(vx?.navigation?.max_velocity - pyfaStats['Pyfa Vexor'].max_velocity) < 1e-6),
+  `${kind}: ${before.length} -> ${after.length} fits; ${before.filter((x) => !after.includes(x)).join(' / ')} => ${after.filter((x) => !before.includes(x)).join(' / ')}`);
+
+// migration: a fresh profile holding only the localStorage library of earlier versions
+{
+  const ctx = await b.createBrowserContext();
+  const q = await ctx.newPage();
+  q.on('pageerror', (e) => errors.push(`migration page: ${e.message}`));
+  const legacy = { lib: { fits: { legacy1: { id: 'legacy1', name: 'Legacy Rifter', ship_type_id: 587, mode_type_id: null, modules: [], drones: [], fighters: [], implants: [], boosters: [], cargo: [], projected: [], fleet: { booster_fit_ids: [], buffs: [] }, environment: [], system_security: null, character_id: 'all5', damage_pattern_id: 'uniform', target_profile_id: 'none', options: { factor_reload: false, spool: 1, rah: 'adapt' } } }, characters: {}, damagePatterns: {}, targetProfiles: {} }, settings: { activeFitId: 'legacy1', lang: 'en' } };
+  await q.evaluateOnNewDocument((v) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('eve-fit-web:v1', v); sessionStorage.setItem('seeded', '1'); } }, JSON.stringify(legacy));
+  await q.goto(`${url}${sep}engine=${engine}`, { waitUntil: 'networkidle0', timeout: 120000 });
+  await q.waitForFunction(() => window.__lastStats?.ship?.name === 'Rifter', { timeout: 120000 }).catch(() => null);
+  await q.evaluate(() => window.__eveStore.flush());
+  const m = await q.evaluate(() => ({ status: window.__eveStore?.status, ls: localStorage.getItem('eve-fit-web:v1'), backup: !!localStorage.getItem('eve-fit-web:v1:migrated') }));
+  await q.reload({ waitUntil: 'networkidle0' });
+  await q.waitForFunction(() => window.__lastStats?.ship?.name === 'Rifter', { timeout: 120000 }).catch(() => null);
+  const m2 = await q.evaluate(() => window.__eveStore?.status);
+  check('web.e2e.library-migration: the localStorage library of earlier versions moves to IndexedDB (copy kept)', m.status?.migrated === 1 && m.status.kind === 'indexeddb' && !JSON.parse(m.ls ?? '{}').lib && m.backup && m2?.fits === 1 && m2.migrated === 0, JSON.stringify({ s1: m.status, s2: m2 }));
+  await ctx.close();
+}
+}
+
 check('web.e2e.no-page-errors: no page errors', errors.length === 0, errors.join(' | '));
 
 await b.close();

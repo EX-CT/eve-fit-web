@@ -59,6 +59,18 @@ used before the ids were added (2026-10-03):
 | `web.e2e.graph-ecm-damage` | ECM burst graph, damage dealt before dying |
 | `web.e2e.graph-overlay` | dps graph overlays a second fit |
 | `web.e2e.graph-target-fit` | damage graph against a target fit (engine) |
+| `web.e2e.pyfa-db-import` | Pyfa saveddata.db import (sql.js): every fit, character, profiles, implant set, into folder "Pyfa import" |
+| `web.e2e.pyfa-db-stats` | Pyfa database fits compute Pyfa's numbers (dps vs target profile, EHP vs damage pattern, speed with a projected web, CPU) within 1e-6 relative; on ts-worker (engine D, not held to Pyfa) the fits only have to compute |
+| `web.e2e.pyfa-db-links` | projected fit and fleet booster fit links, saved character |
+| `web.e2e.library-rename-move-tag` | rename, move to a nested folder and tag a fit |
+| `web.e2e.library-search-tags` | tag filter and search (ship name) |
+| `web.e2e.library-folder-rename` | renaming a folder moves its fits |
+| `web.e2e.library-duplicate-delete` | duplicate keeps folder and tags; delete removes the fit |
+| `web.e2e.library-export-xml-eft` | bulk export (one EVE XML with 2 fittings, multi-fit EFT) and XML re-import |
+| `web.e2e.library-backup-restore` | JSON backup (v2: folders, tags) restores without duplicating fits |
+| `web.e2e.dna-import` | DNA import (plain and fitting link) round trip: same DNA back, ship, modules, charges, drones launched |
+| `web.e2e.library-reload-persistence` | fits, folders and tags survive a reload (IndexedDB) |
+| `web.e2e.library-migration` | the localStorage library of earlier versions moves to IndexedDB (copy kept) |
 | `web.e2e.shipstats-export` | ship stats export (engine stats + formats module) |
 | `web.e2e.whatif-apply` | applying a scenario changes the fit; undo restores it |
 | `web.e2e.whatif-charges` | what-if ranks compatible charges |
@@ -92,6 +104,7 @@ built from the engines.lock pin (`REQUIRE_FORMATS_WASM=1`: the WASM formats test
 | `web.unit.formats-wasm-eft-import` | `src/formats/wasm.test.ts` | lenient EFT import (unknown items skipped), mutation, drones launched |
 | `web.unit.formats-wasm-errors` | `src/formats/wasm.test.ts` | unrecognised text and item lists are readable errors |
 | `web.unit.formats-wasm-multi-eft` | `src/formats/wasm.test.ts` | several pasted EFT fits import as several fits |
+| `web.unit.formats-wasm-multi-export` | `src/formats/wasm.test.ts` | several fits as one EVE XML document and as multi-fit EFT, both re-import as every fit |
 | `web.unit.formats-wasm-shipstats-needs-stats` | `src/formats/wasm.test.ts` | shipstats without engine stats is an error; request has no spool |
 | `web.unit.formats-wasm-xml-roundtrip` | `src/formats/wasm.test.ts` | EVE XML export and re-import keep the mutated module |
 | `web.unit.graph-cap-stable` | `src/fit/graphs.test.ts` | a fit with no cap use stays full |
@@ -101,10 +114,33 @@ built from the engines.lock pin (`REQUIRE_FORMATS_WASM=1`: the WASM formats test
 | `web.unit.i18n-coverage` | `src/i18n.test.ts` | every t()/tr() literal and every dynamic label key has a zh-CN translation |
 | `web.unit.i18n-jsx-literals` | `src/i18n.test.ts` | no untranslated English text nodes or placeholder/title attributes in the UI |
 | `web.unit.i18n-switch` | `src/i18n.test.ts` | t() returns Chinese only in zh mode and falls back to the key |
+| `web.unit.library-backup-merge` | `src/fit/library.test.ts` | JSON backup v2 (no built-ins), v1 backups still restore, restoring twice adds nothing, colliding ids are remapped with their links |
+| `web.unit.library-folders` | `src/fit/library.test.ts` | folder list with parents; renaming moves subfolders and fits; deleting moves fits up |
+| `web.unit.library-rename-duplicate-delete` | `src/fit/library.test.ts` | rename, duplicate (new id, folder and tags kept), delete drops links to the fit |
+| `web.unit.library-search-tags` | `src/fit/library.test.ts` | search by name, ship (English), folder, notes and tag:<name>; tags normalised |
 | `web.unit.metric-lock-range-km` | `src/fit/metrics.test.ts` | lock range is reported in km |
+| `web.unit.pyfadb-fighters` | `src/formats/pyfadb.test.ts` | squadron size -1 = full squadron, ability toggles as active effect ids |
+| `web.unit.pyfadb-fits` | `src/formats/pyfadb.test.ts` | every saved fit with ship, mode, notes, module states, charges, cargo |
+| `web.unit.pyfadb-links-profiles` | `src/formats/pyfadb.test.ts` | characters, profiles, implant sets, projected and command fits resolve to library ids |
+| `web.unit.pyfadb-mutated-implants-boosters` | `src/formats/pyfadb.test.ts` | mutated module, implants, booster side effects, drones kept in the bay |
+| `web.unit.pyfadb-rejects` | `src/formats/pyfadb.test.ts` | non-SQLite bytes and SQLite files without Pyfa tables are errors |
 | `web.unit.request-missing-projected-fit` | `src/fit/model.test.ts` | a projected fit deleted from the library is dropped |
 | `web.unit.request-nested-fits` | `src/fit/model.test.ts` | projected and fleet booster fits nest one level deep only |
 | `web.unit.request-shape` | `src/fit/model.test.ts` | a UI fit becomes a contract FitRequest (schema 1, all-5 skills, uniform profile = null) |
+| `web.unit.store-diff` | `src/store/library.test.ts` | only changed fits are written, removed ones deleted, built-ins never stored |
+| `web.unit.store-fallback` | `src/store/library.test.ts` | without IndexedDB the library goes to localStorage |
+| `web.unit.store-idb-roundtrip` | `src/store/library.test.ts` | fits and kv survive a new connection; puts, deletes and kv replace in one transaction |
+| `web.unit.store-migration` | `src/store/library.test.ts` | the localStorage library of earlier versions moves into IndexedDB once; a copy is kept |
 | `web.unit.whatif-charges` | `src/fit/whatif.test.ts` | a charge scenario loads every module of that type |
 | `web.unit.whatif-offline-remove` | `src/fit/whatif.test.ts` | offline and remove edits, out-of-range indices ignored |
 | `web.unit.whatif-variations` | `src/fit/whatif.test.ts` | meta variations of a module, the fitted type excluded, charge kept |
+
+## Ids from the eve3 gap list
+
+`EX-CT/eve-dogma-bench` (branch pending-1.11) `inventory/mcp-web-gaps.md` @97e4cc5 lists two web checks as weak or partial.
+They are covered by:
+
+| gap id | checks |
+|---|---|
+| DB-001 (saved fits persist across a reload) | `web.e2e.library-reload-persistence` (reload without a share link, IndexedDB), `web.e2e.library-migration`, `web.unit.store-idb-roundtrip`, `web.unit.store-migration` |
+| FMT-DNA-001 (DNA import) | `web.e2e.dna-import` (plain DNA and fitting link, round trip), `web.unit.builtin-dna`, `web.unit.formats-wasm-dna-esi` |
