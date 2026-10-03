@@ -237,6 +237,11 @@ await p.evaluate(() => { const l = [...document.querySelectorAll('.subopts label
 s = await waitNew(s);
 const f1 = s.offense?.total?.fighter_dps ?? s.offense?.total?.drone_dps;
 check('disabling an attack ability lowers fighter dps', f1 < f0, `${f0} -> ${f1}`);
+// About / engine page
+await clickText('.left .tabs button', 'About');
+const ab2 = await p.evaluate(() => ({ be: document.querySelector('.about-backend')?.textContent, eng: document.querySelector('.about-engine')?.textContent ?? '',
+  data: document.querySelector('.about-dataset')?.textContent ?? '', links: document.querySelectorAll('.about a').length }));
+check('about page: backend, engine, dataset, links', ab2.be === engine && ab2.eng.length > 3 && !ab2.eng.startsWith('—') && ab2.data.includes('3569502') && ab2.links >= 8, JSON.stringify(ab2));
 check('no page errors', errors.length === 0, errors.join(' | '));
 
 await b.close();

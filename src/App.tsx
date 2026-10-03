@@ -15,6 +15,7 @@ import { ItemInfo, Market, type InfoCtx } from './ui/Market';
 import { FitBrowser } from './ui/FitBrowser';
 import { PriceBox } from './ui/PriceBox';
 import { Profiles } from './ui/Profiles';
+import { About, type BuildInfo } from './ui/About';
 import { Stats } from './ui/Stats';
 import { Tabs } from './ui/common';
 
@@ -48,7 +49,7 @@ export default function App() {
   const [calcErr, setCalcErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ms, setMs] = useState<number | null>(null);
-  const [left, setLeft] = useState<'market' | 'fits' | 'char' | 'profiles'>('market');
+  const [left, setLeft] = useState<'market' | 'fits' | 'char' | 'profiles' | 'about'>('market');
   const [center, setCenter] = useState<'fit' | 'graphs'>('fit');
   const [infoState, setInfoState] = useState<{ id: number; ctx?: InfoCtx } | null>(null);
   const [fitted, setFitted] = useState<Record<string, number> | null | undefined>(undefined);
@@ -56,7 +57,7 @@ export default function App() {
   const setInfo = (id: number | null, ctx?: InfoCtx) => setInfoState(id == null ? null : { id, ctx });
   const info = infoState?.id ?? null;
   const [showIO, setShowIO] = useState(false);
-  const [build, setBuild] = useState<{ dataset_tag?: string; engine_d?: string; engine_f?: string; web?: string; built_at?: string; run?: string } | null>(null);
+  const [build, setBuild] = useState<BuildInfo | null>(null);
   useEffect(() => { fetch(`${import.meta.env.BASE_URL}build-info.json`).then((r) => (r.ok ? r.json() : null)).then(setBuild, () => {}); }, []);
   // SDE-derived NPC damage / target profiles (eve-sde-pipeline presets.json) join the built-in profiles (not persisted).
   useEffect(() => { loadSdePresets().then((p) => update((s) => ({ ...s, lib: { ...s.lib,
@@ -229,7 +230,7 @@ export default function App() {
       </header>
       <main>
         <aside className="left">
-          <Tabs tabs={[['market', t('Market')], ['fits', `${t('Fits')} (${Object.keys(lib.fits).length})`], ['char', t('Character')], ['profiles', t('Profiles')]]} value={left} onChange={setLeft} />
+          <Tabs tabs={[['market', t('Market')], ['fits', `${t('Fits')} (${Object.keys(lib.fits).length})`], ['char', t('Character')], ['profiles', t('Profiles')], ['about', t('About')]]} value={left} onChange={setLeft} />
           {left === 'market' && <Market ds={ds} onPick={pick} onInfo={setInfo} />}
           {left === 'fits' && <FitBrowser ds={ds} lib={lib} activeId={fit?.id ?? null}
             onOpen={(id) => update((s) => ({ ...s, settings: { ...s.settings, activeFitId: id } }))}
@@ -238,6 +239,7 @@ export default function App() {
             onRestore={(l) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, ...l.fits }, characters: { ...s.lib.characters, ...l.characters }, damagePatterns: { ...s.lib.damagePatterns, ...l.damagePatterns }, targetProfiles: { ...s.lib.targetProfiles, ...l.targetProfiles } } }))} />}
           {left === 'char' && <CharacterEditor ds={ds} lib={lib} fit={fit} onLib={setLib} />}
           {left === 'profiles' && <Profiles lib={lib} fit={fit} onLib={setLib} onFit={setFit} />}
+          {left === 'about' && <About cfg={settings.engine} status={engineStatus} st={stats} ds={ds} build={build} />}
         </aside>
         <section className="center">
           <Tabs tabs={[['fit', t('Fit')], ['graphs', t('Graphs')]]} value={center} onChange={setCenter} />

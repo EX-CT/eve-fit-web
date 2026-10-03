@@ -10,6 +10,10 @@ on:
         description: "eve-sde-pipeline release tag (default: latest)"
         required: false
         default: ""
+      default_engine:
+        description: "default engine backend (ts-worker | wasm-worker | http); empty = repo variable DEFAULT_ENGINE or ts-worker"
+        required: false
+        default: ""
   schedule:
     - cron: "40 */6 * * *"   # pick up new SDE releases / engine updates
 permissions:
@@ -25,6 +29,8 @@ jobs:
     timeout-minutes: 40
     env:
       GH_TOKEN: ${{ github.token }}
+      # default engine backend of the site: dispatch input > repo variable DEFAULT_ENGINE > ts-worker
+      DEFAULT_ENGINE: ${{ github.event.inputs.default_engine || vars.DEFAULT_ENGINE || 'ts-worker' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -62,8 +68,9 @@ jobs:
           echo "ENGINE_F=$(git -C lab-f rev-parse --short HEAD)" >> "$GITHUB_ENV"
       - name: Build info
         run: |
-          printf '{"dataset_tag":"%s","engine_d":"%s","engine_f":"%s","web":"%s","built_at":"%s","run":"%s"}\n' \
-            "$DATASET_TAG" "${ENGINE_D:-}" "${ENGINE_F:-}" "${GITHUB_SHA::7}" "$(date -u +%FT%TZ)" \
+          echo "VITE_DEFAULT_ENGINE=$DEFAULT_ENGINE" >> "$GITHUB_ENV"
+          printf '{"dataset_tag":"%s","engine_d":"%s","engine_f":"%s","web":"%s","built_at":"%s","default_engine":"%s","run":"%s"}\n' \
+            "$DATASET_TAG" "${ENGINE_D:-}" "${ENGINE_F:-}" "${GITHUB_SHA::7}" "$(date -u +%FT%TZ)" "$DEFAULT_ENGINE" \
             "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > public/build-info.json
           cat public/build-info.json
       - run: npm run build
