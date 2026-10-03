@@ -1,0 +1,27 @@
+#!/usr/bin/env node
+// An `eve-fit`-compatible command line backed by the site's in-browser engine (tools/browser-rpc.mjs), so the
+// eve-dogma-bench runners (tools/run_all_suites.sh: run.py --cmd/--batch-cmd, score.py --batch-cmd, run_graphs.py
+// --rpc-cmd, evaluate_formats.py --rpc ...) can score the deployed build as if it were a native engine binary.
+//   BROWSER_URL=<site-url> BROWSER_ENGINE=wasm-worker tools/browser-engine.mjs calc [FILE] | batch | serve-stdio
+import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const url = process.env.BROWSER_URL ?? 'http://127.0.0.1:4173/eve-fit-web/';
+const engine = process.env.BROWSER_ENGINE ?? 'wasm-worker';
+const rpc = fileURLToPath(new URL('./browser-rpc.mjs', import.meta.url));
+const [cmd, file] = process.argv.slice(2);
+const run = (args, input) => {
+  const c = spawn(process.execPath, [rpc, url, engine, ...args], { stdio: [input == null ? 'inherit' : 'pipe', 'inherit', 'inherit'] });
+  if (input != null) { c.stdin.end(input); }
+  c.on('exit', (code) => process.exit(code ?? 1));
+};
+if (cmd === 'batch') run(['--batch']);
+else if (cmd === 'serve-stdio') run([]);
+else if (cmd === 'calc') {
+  const text = file && file !== '-' ? readFileSync(file, 'utf8') : readFileSync(0, 'utf8');
+  run(['--batch'], JSON.stringify(JSON.parse(text)) + '\n');
+} else {
+  console.error('usage: browser-engine.mjs calc [FILE] | batch | serve-stdio   (env BROWSER_URL, BROWSER_ENGINE)');
+  process.exit(2);
+}
