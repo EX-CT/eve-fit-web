@@ -50,11 +50,11 @@ export interface FitFormats {
 }
 
 /** The request whose stats the `shipstats` export needs (eve-fit-formats `shipstats_request`): all attributes and
- *  no spool-up instead of the fit's spool settings. */
+ *  no spool-up instead of the fit's spool settings, unrounded floats (`full_precision`, eve-dogma 11cc19d). */
 export function shipstatsRequest(req: Record<string, any>): Record<string, unknown> {
   return {
     ...req,
-    options: { ...(req.options ?? {}), include_attributes: 'all', default_spool: { type: 'spool_scale', amount: 0 } },
+    options: { ...(req.options ?? {}), include_attributes: 'all', full_precision: true, default_spool: { type: 'spool_scale', amount: 0 } },
     modules: (req.modules ?? []).map((m: Record<string, unknown>) => ({ ...m, spool: null })),
   };
 }

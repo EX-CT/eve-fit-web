@@ -30,6 +30,14 @@ async function handle(line, asBatch) {
       if (method === 'graph') return e.graph ? e.graph(params) : { error: { code: 'UNKNOWN_METHOD', message: 'backend has no graph RPC' } };
       if (method === 'graph_specs') return e.graphSpecs ? e.graphSpecs() : null;
       if (method === 'calc') return e.calc(params);
+      // shipstats like `eve-fit serve-stdio`: the engine computes shipstats_request(fit) first (all attributes, no spool-up,
+      // full precision), the formats module renders it from the exact stats text
+      if (method === 'format_export' && params?.format === 'shipstats' && !params.stats && !params.stats_json && window.__eveFormatsRpc) {
+        const f = params.fit ?? {};
+        const st = await e.calc({ ...f, options: { ...(f.options ?? {}), include_attributes: 'all', full_precision: true, default_spool: { type: 'spool_scale', amount: 0 } }, modules: (f.modules ?? []).map((m) => ({ ...m, spool: null })) });
+        if (st?.error) return st;
+        return window.__eveFormatsRpc(method, { ...params, stats_json: JSON.stringify(st) });
+      }
       if (['eft_parse', 'eft_export', 'format_import', 'format_export'].includes(method))
         return window.__eveFormatsRpc ? window.__eveFormatsRpc(method, params) : { error: { code: 'UNKNOWN_METHOD', message: `${method}: no eve-fit-formats module` } };
       return { error: { code: 'UNKNOWN_METHOD', message: method } };

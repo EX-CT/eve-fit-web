@@ -59,7 +59,7 @@ export function wasmFormats(ds: Dataset, rpc: RpcFn, label = 'eve-fit-formats (W
       return { kind, fits, warnings };
     },
     export(input: ExportInput, format: ExportFormat, opts?: ExportOptions): string {
-      const r = rpc('format_export', { fit: input.fit, name: input.name, format, ...(opts ? { options: opts } : {}), ...(input.stats ? { stats: input.stats } : {}) });
+      const r = rpc('format_export', { fit: input.fit, name: input.name, format, ...(opts ? { options: opts } : {}), ...(input.stats ? { stats_json: JSON.stringify(input.stats) } : {}) });
       if (!r || r.error) throw new Error(r ? errMsg(r) : 'formats module returned nothing');
       return r.text;
     },
