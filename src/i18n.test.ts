@@ -20,6 +20,11 @@ function dynamicKeys(): string[] {
   for (const { p, s } of sources) {
     // ['id', 'Label'] tuples in the UI label tables (graph kinds, slots, exports, market filters)
     if (/ui\/(Graphs|Fitting|ImportExport|Market)\.tsx$/.test(p)) for (const m of s.matchAll(/\[\s*'[a-z_]+'\s*,\s*'([^']+)'\s*[\],]/g)) { if (/[A-Z ]/.test(m[1])) keys.push(m[1]); }
+    // engine violation labels and outgoing-rep rows (stats panel)
+    if (/ui\/Stats\.tsx$/.test(p)) {
+      for (const m of s.matchAll(/\b[A-Z_]{4,}: '([^']+)'/g)) keys.push(m[1]);
+      for (const m of s.matchAll(/\['[a-z_]+', '([^']+)', '[^']+'\]/g)) keys.push(m[1]);
+    }
     // chart axis labels and series names (graph views)
     if (/(ui\/Graphs\.tsx|fit\/graphs\.ts)$/.test(p)) for (const m of s.matchAll(/\b(?:x|y|name): '([^']+)'/g)) if (/[A-Z %]/.test(m[1])) keys.push(m[1]);
   }

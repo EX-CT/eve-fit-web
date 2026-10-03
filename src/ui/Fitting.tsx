@@ -56,6 +56,7 @@ function ModuleRow({ ds, m, idx, fit, stats, onChange, onInfo }: { ds: Dataset; 
         </select>
       )}
       {mutas.length > 0 && <button className="mini" onClick={() => setShowMuta(!showMuta)} title={t('Mutaplasmid')}>✦</button>}
+      {modStats?.heat && <span className="heat" title={`${t('expected overheat burnout')}: ${modStats.heat.burn_cycles} ${t('cycles')}`}>🔥 {fmtBurn(modStats.heat.burnout_s)}</span>}
       <span className="mstat">{wpn ? `${wpn.dps?.total?.toFixed(1)} dps` : modStats?.cap_use_gj_s ? `${modStats.cap_use_gj_s.toFixed(2)} GJ/s` : ''}</span>
       <button className="mini" onClick={remove} title={t('Remove')}>✕</button>
       {showMuta && (
@@ -88,6 +89,9 @@ function ModuleRow({ ds, m, idx, fit, stats, onChange, onInfo }: { ds: Dataset; 
     </div>
   );
 }
+
+const fmtBurn = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}m ${Math.round(s % 60)}s` : `${Math.round(s)}s`);
+const ehpTotal = (x: any) => (x?.ehp ? (x.ehp.shield ?? 0) + (x.ehp.armor ?? 0) + (x.ehp.hull ?? 0) : null);
 
 function Qty({ value, onChange, min = 0, max = 999 }: { value: number; onChange: (v: number) => void; min?: number; max?: number }) {
   return <input className="qty" type="number" min={min} max={max} value={value} onChange={(e) => onChange(Math.max(min, Math.min(max, +e.target.value || 0)))} />;
@@ -131,6 +135,8 @@ function ImplantSets({ ds, fit, onChange }: FitProps) {
 
 function Bays(p: FitProps) {
   const { ds, fit, onChange, onInfo } = p;
+  const dehp = (i: number) => ehpTotal(p.stats?.drones?.items?.find((x: any) => x.drone_index === i));
+  const fehp = (i: number) => ehpTotal(p.stats?.fighters?.items?.find((x: any) => x.fighter_index === i));
   const rm = <K extends 'drones' | 'fighters' | 'implants' | 'boosters' | 'cargo'>(k: K, i: number) => onChange({ ...fit, [k]: (fit[k] as unknown[]).filter((_, j) => j !== i) });
   return (
     <>
@@ -138,11 +144,13 @@ function Bays(p: FitProps) {
         <div className="mod" key={i}><span className="mname" onClick={() => onInfo(d.type_id, { drone: i })}>{ds.name(d.type_id)}</span>
           <span>{t('qty')} <Qty value={d.quantity} min={1} onChange={(v) => onChange({ ...fit, drones: fit.drones.map((x, j) => (j === i ? { ...x, quantity: v, active: Math.min(x.active, v) } : x)) })} /></span>
           <span>{t('active')} <Qty value={d.active} max={d.quantity} onChange={(v) => onChange({ ...fit, drones: fit.drones.map((x, j) => (j === i ? { ...x, active: v } : x)) })} /></span>
+          {dehp(i) != null && <span className="muted dehp" title={t('EHP of one drone (damage pattern of the fit)')}>{Math.round(dehp(i)!)} EHP</span>}
           <button className="mini" onClick={() => rm('drones', i)}>✕</button></div>))}</div>}
       {fit.fighters.length > 0 && <div className="bay"><h4>{t('Fighters')}</h4>{fit.fighters.map((f, i) => (
         <div className="mod" key={i}><span className="mname" onClick={() => onInfo(f.type_id)}>{ds.name(f.type_id)}</span>
           <span>{t('squadron')} <Qty value={f.quantity} min={1} onChange={(v) => onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, quantity: v } : x)) })} /></span>
           <label><input type="checkbox" checked={f.active} onChange={(e) => onChange({ ...fit, fighters: fit.fighters.map((x, j) => (j === i ? { ...x, active: e.target.checked } : x)) })} /> {t('launched')}</label>
+          {fehp(i) != null && <span className="muted fehp" title={t('EHP of one fighter (damage pattern of the fit)')}>{Math.round(fehp(i)!)} EHP</span>}
           <button className="mini" onClick={() => rm('fighters', i)}>✕</button>
           <div className="subopts">{ds.fighterAbilities(f.type_id).map((a, _k, all) => {
             const on = f.abilities ? f.abilities.includes(a.effect) : a.default;

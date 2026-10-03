@@ -91,3 +91,9 @@ button.tiny { font-size: 10px; padding: 0 4px; margin-left: 3px; }
 .fitbrowser .lib-bulk { flex-wrap: wrap; gap: 4px; background: #1b2530; padding: 4px; border-radius: 4px; margin: 4px 0; }
 .fitbrowser .lib-actions { flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .fitbrowser summary .right { float: right; }
+
+/* stats-ext 1.10 (F 20aa425): mining, outgoing reps, bombing, heat, drone EHP */
+.stats details.bombing { margin: 4px 0 8px; }
+.stats details.bombing summary { cursor: pointer; font-weight: 600; }
+.mod .heat { font-size: 11px; color: #e8833a; margin-left: 4px; white-space: nowrap; }
+.mod .dehp, .mod .fehp { font-size: 11px; margin-left: 4px; }

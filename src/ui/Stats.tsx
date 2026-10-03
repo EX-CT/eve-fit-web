@@ -29,7 +29,7 @@ export function Stats({ st, busy, ms, error, ds, fit }: { st: FitStats | null; b
       <div className="statmeta muted">{st.meta?.engine} · SDE {st.meta?.sde_build}{ms != null ? ` · ${ms.toFixed(1)} ms` : ''}{busy ? ' · …' : ''}</div>
       {(st.violations?.length ?? 0) > 0 && (
         <Section title={`${tr('Problems')} (${st.violations.length})`}>
-          <ul className="viol">{st.violations.map((v: any, i: number) => <li key={i}><b>{v.code}</b> {v.message}</li>)}</ul>
+          <ul className="viol">{st.violations.map((v: any, i: number) => <li key={i} data-code={v.code} title={v.code}><b>{VIOLATION_LABEL[v.code] ? tr(VIOLATION_LABEL[v.code]) : v.code}</b> {v.message}</li>)}</ul>
         </Section>
       )}
       {(st.warnings?.length ?? 0) > 0 && <Section title={tr('Engine warnings')}><ul className="viol warn">{st.warnings.map((w: string, i: number) => <li key={i}>{w}</li>)}</ul></Section>}
@@ -96,8 +96,66 @@ export function Stats({ st, busy, ms, error, ds, fit }: { st: FitStats | null; b
         <div className="kv"><span>{tr('active')} {st.drones?.active}/{st.drones?.max_active}</span><span>{tr('control range')} {fmt((st.drones?.control_range_m ?? 0) / 1000)} km</span></div>
       </Section>
       {st.remote && <Section title={tr('Remote assistance')}><div className="kv">{Object.entries(st.remote).map(([k, v]) => <span key={k}>{k}: {fmt(v as number, 2)}</span>)}</div></Section>}
-      {st.mining && <Section title={tr('Mining')}><div className="kv">{Object.entries(st.mining).map(([k, v]) => <span key={k}>{k}: {fmt(v as number, 3)}</span>)}</div></Section>}
+      <Mining m={st.mining} />
+      <Outgoing o={st.outgoing} />
+      <Bombing b={st.bombing} />
     </div>
+  );
+}
+
+/** Engine violation codes (contract 1.x validate + eve-dogma 2da8150) -> label */
+export const VIOLATION_LABEL: Record<string, string> = {
+  CPU_OVERLOAD: 'CPU overloaded', POWER_OVERLOAD: 'Powergrid overloaded', CALIBRATION_OVERLOAD: 'Calibration exceeded', DRONE_BANDWIDTH: 'Drone bandwidth exceeded',
+  SLOTS_EXCEEDED: 'Too many modules in a rack', TURRET_HARDPOINTS: 'Not enough turret hardpoints', LAUNCHER_HARDPOINTS: 'Not enough launcher hardpoints',
+  RIG_SIZE: 'Wrong rig size', SHIP_RESTRICTION: 'Not allowed on this ship', NOT_FITTABLE: 'Not a fittable module', MAX_TYPE_FITTED: 'Too many of this type',
+  MAX_GROUP_FITTED: 'Too many of this group', MAX_GROUP_ONLINE: 'Too many of this group online', MAX_GROUP_ACTIVE: 'Too many of this group active',
+  CHARGE_GROUP: 'Charge does not fit this module', CHARGE_SIZE: 'Wrong charge size', CHARGE_CAPACITY: 'Charge too large for the module', MISSING_SKILL: 'Missing skill',
+};
+
+const nz = (o: Record<string, number> | undefined) => !!o && Object.values(o).some((v) => typeof v === 'number' && v > 0);
+
+/** Mining yield (F stats-ext 1.10 `mining`): m³/s of modules and drones, and with residue/waste (drain). */
+function Mining({ m }: { m: any }) {
+  if (!nz(m)) return null;
+  return (
+    <Section title={tr('Mining')} right={<b className="mining-total">{fmt(m.total_m3_s, 2)} m³/s</b>}>
+      <table className="grid small mining"><thead><tr><th></th><th>{tr('yield m³/s')}</th><th>{tr('with waste m³/s')}</th></tr></thead><tbody>
+        <tr><td>{tr('Modules')}</td><td className="num">{fmt(m.modules_m3_s, 3)}</td><td className="num">{fmt(m.modules_drain_m3_s, 3)}</td></tr>
+        <tr><td>{tr('Drones')}</td><td className="num">{fmt(m.drones_m3_s, 3)}</td><td className="num">{fmt(m.drones_drain_m3_s, 3)}</td></tr>
+        <tr><td><b>{tr('Total')}</b></td><td className="num"><b>{fmt(m.total_m3_s, 3)}</b></td><td className="num">{fmt((m.modules_drain_m3_s ?? 0) + (m.drones_drain_m3_s ?? 0), 3)}</td></tr>
+      </tbody></table>
+      <div className="muted small">{tr('m³ per hour')}: {fmt((m.total_m3_s ?? 0) * 3600, 0)}</div>
+    </Section>
+  );
+}
+
+const OUT_KEYS = [['shield_per_s', 'Shield', 'HP/s'], ['armor_per_s', 'Armor', 'HP/s'], ['hull_per_s', 'Hull', 'HP/s'], ['capacitor_per_s', 'Capacitor', 'GJ/s']] as const;
+/** Outgoing remote repairs and capacitor transfer (F stats-ext 1.10 `outgoing`), with the spool range of mutadaptive repairers. */
+function Outgoing({ o }: { o: any }) {
+  if (!o || !(nz(o.current) || nz(o.spool_max))) return null;
+  const spools = OUT_KEYS.some(([k]) => (o.spool_min?.[k] ?? 0) !== (o.spool_max?.[k] ?? 0));
+  return (
+    <Section title={tr('Remote repairs (outgoing)')}>
+      <table className="grid small outgoing"><thead><tr><th></th><th>{tr('current')}</th>{spools && <><th>{tr('spool min')}</th><th>{tr('spool max')}</th></>}</tr></thead><tbody>
+        {OUT_KEYS.filter(([k]) => o.current?.[k] || o.spool_max?.[k]).map(([k, l, u]) => (
+          <tr key={k} data-key={k}><td>{tr(l)}</td><td className="num">{fmt(o.current?.[k], 1)} {u}</td>
+            {spools && <><td className="num">{fmt(o.spool_min?.[k], 1)}</td><td className="num">{fmt(o.spool_max?.[k], 1)}</td></>}</tr>
+        ))}
+      </tbody></table>
+    </Section>
+  );
+}
+
+/** Bombs needed to kill this ship (F stats-ext 1.10 `bombing`, Pyfa's bombing view): per bomb damage type and Covert Ops level. */
+function Bombing({ b }: { b: any }) {
+  if (!b || !b.em) return null;
+  return (
+    <details className="bombing">
+      <summary>{tr('Bombs to kill')} <span className="muted small">({tr('by damage type and Covert Ops level')})</span></summary>
+      <table className="grid small"><thead><tr><th>{tr('bomb')}</th>{[0, 1, 2, 3, 4, 5].map((l) => <th key={l}>CO {l}</th>)}</tr></thead><tbody>
+        {DT.map((k) => <tr key={k} data-type={k}><td className={'dt-' + k}>{tr(k)}</td>{[0, 1, 2, 3, 4, 5].map((l) => <td key={l} className="num">{fmt(b[k]?.[`covert_ops_${l}`], 1)}</td>)}</tr>)}
+      </tbody></table>
+    </details>
   );
 }
 
