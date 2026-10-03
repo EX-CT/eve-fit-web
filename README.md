@@ -45,7 +45,7 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
 | backend | where it runs | notes |
 |---|---|---|
 | `ts-worker` | browser (Web Worker) | **fallback**: variant D TypeScript bundle, built in CI from `EX-CT/eve-dogma-lab@variant-d`. It loads the same release dataset |
-| `wasm-worker` | browser (Web Worker) | **default** (mainline = F): variant F Rust→WASM, stats **and** graphs in one worker (C-ABI `calc` + `rpc` with `graph` / `graph_specs`, CONTRACT-GRAPHS 0.2), built in CI from `ENGINE_F_SRC` in [`engines.lock`](engines.lock) (`owner/repo@sha:dir`, currently eve-dogma-lab `variant-f-features` @ 4b8f5f9) with the release dataset compiled in. CI gates the deploy on its e2e, the bench 1.9.0 corpus (331 cases) and the graphs 0.2 suite (178 cases), both in headless Chrome. TODO: when F's bot migrates F to EX-CT/eve-dogma, repoint `ENGINE_F_SRC` to that repo (one line). `?engine=wasm-g4-worker` (the retired separate graphs worker) maps to this backend |
+| `wasm-worker` | browser (Web Worker) | **default** (mainline = F): variant F Rust→WASM, stats **and** graphs in one worker (C-ABI `calc` + `rpc` with `graph` / `graph_specs`, CONTRACT-GRAPHS 0.2), built in CI from `ENGINE_F_SRC` in [`engines.lock`](engines.lock) (`owner/repo@sha:dir`, currently [EX-CT/eve-dogma](https://github.com/EX-CT/eve-dogma) @ 8b85262, crate `eve-wasm` → `engines/f/eve_wasm.wasm`) with the release dataset compiled in. CI gates the deploy on its e2e, the bench 1.9.0 corpus (331 cases) and the graphs 0.2 suite (178 cases), both in headless Chrome. `?engine=wasm-g4-worker` (the retired separate graphs worker) maps to this backend |
 | `wasm-j-worker` | browser (Web Worker) | **optional** speed-reference engine (not the default): variant J (round-1 winner; the mainline is Rust based on F; C++20 → WASM with Emscripten, LGPL-3.0-or-later), built in CI from `ENGINE_J_SRC` in [`engines.lock`](engines.lock) (`owner/repo@sha:dir`; moving to EX-CT/eve-dogma is a one-line change). The worker writes the release dataset into the module's virtual FS. J has no graph RPC, so its graphs come from F (`GRAPH_FALLBACK` in `src/engine/adapter.ts`); the Graphs label and the About tab say which backend computed them. CI runs the bench 1.9.0 stats corpus in headless Chrome against this build too (`tools/browser-dogma-bench.py`; informational for J) |
 | `http` | any engine server | `POST {url}/v1/calc`, `GET {url}/v1/meta` (graph RPC: `POST {url}/v1/graph`, `GET {url}/v1/graph_specs`); e.g. variant C `serve-http`, through `tools/engine-bridge.mjs` for CORS |
 
@@ -87,6 +87,6 @@ node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-
 
 ## Licence
 - UI code: MIT.
-- The bundled engines are LGPL-3.0-or-later (EX-CT/eve-dogma-lab, variants D and F). They are loaded as separate files (`engines/`), with their source on GitHub.
+- The bundled engines are LGPL-3.0-or-later (F: EX-CT/eve-dogma; D and J: EX-CT/eve-dogma-lab). They are loaded as separate files (`engines/`), with their source on GitHub.
 - EVE Online data © CCP hf., used under CCP's developer licence (`data/LICENSE.EVE`).
 - No Pyfa code is used. Graph formulas come from public EVE mechanics documentation.

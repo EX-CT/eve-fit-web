@@ -22,7 +22,7 @@ async function inPage(p, which, reqs, reps) {
     const t = {}; let calc;
     const t0 = now();
     if (which === 'F') {
-      const bytes = await (await fetch(u('engines/f/eve_dogma_f.wasm'), { cache: 'no-store' })).arrayBuffer(); t.fetch = now() - t0;
+      const bytes = await (await fetch(u('engines/f/eve_wasm.wasm'), { cache: 'no-store' })).arrayBuffer(); t.fetch = now() - t0;
       const t1 = now(); const { instance } = await WebAssembly.instantiate(bytes, {}); t.instantiate = now() - t1;
       const x = instance.exports, enc = new TextEncoder(), dec = new TextDecoder();
       calc = (s) => { const inp = enc.encode(s); const p = x.alloc(inp.length); new Uint8Array(x.memory.buffer, p, inp.length).set(inp);

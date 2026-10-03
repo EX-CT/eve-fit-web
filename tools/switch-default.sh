@@ -13,7 +13,7 @@ grep -q "id: '$id'" src/engine/adapter.ts || { echo "unknown backend '$id' (not 
 case "$id" in
   wasm-j-worker)  f=engines/j/evej.wasm ;;
   wasm-g1-worker) f=engines/g1/eve_dogma_g1_wasm.wasm ;;
-  wasm-worker)    f=engines/f/eve_dogma_f.wasm ;;
+  wasm-worker)    f=engines/f/eve_wasm.wasm ;;
   ts-worker)      f=engines/d/eve-dogma-ts.mjs ;;
   *)              f= ;;
 esac

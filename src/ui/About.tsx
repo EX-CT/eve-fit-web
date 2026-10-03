@@ -19,7 +19,7 @@ export function About({ cfg, status, st, ds, build, graphBackend }: { cfg: Engin
     [t('Engine (reported)'), <span className="about-engine">{st?.meta?.engine ?? '—'}{st?.meta?.sde_build ? ` · SDE ${st.meta.sde_build}` : ''}</span>],
     [t('Graphs computed by'), <span className="about-graphs">{graphBackend ? <><code>{graphBackend}</code>{graphBackend !== cfg.backend ? ` (${t('graph RPC fallback; fit stats from')} ${cfg.backend})` : ''}</> : t('UI approximation (backend has no graph RPC)')}</span>],
     [t('Default backend'), <code>{build?.default_engine || DEFAULT_BACKEND}</code>],
-    ['Engine F (mainline; Rust → WASM, stats + graphs)', <>{commit((build?.engine_f_repo ?? 'EX-CT/eve-dogma-lab').replace('EX-CT/', ''), build?.engine_f)} · <a href={`https://github.com/${build?.engine_f_repo ?? 'EX-CT/eve-dogma-lab'}/tree/${build?.engine_f ?? 'variant-f-features'}/${build?.engine_f_dir ?? 'variant-f'}`}>{(build?.engine_f_repo ?? 'eve-dogma-lab').replace('EX-CT/', '')}{build?.engine_f_dir ? `/${build.engine_f_dir}` : ''}</a> · LGPL-3.0-or-later</>],
+    ['Engine F (mainline; Rust → WASM, stats + graphs)', <>{commit((build?.engine_f_repo ?? 'EX-CT/eve-dogma').replace('EX-CT/', ''), build?.engine_f)} · <a href={`https://github.com/${build?.engine_f_repo ?? 'EX-CT/eve-dogma'}/tree/${build?.engine_f ?? 'main'}/${build?.engine_f_dir ?? ''}`}>{(build?.engine_f_repo ?? 'eve-dogma').replace('EX-CT/', '')}{build?.engine_f_dir ? `/${build.engine_f_dir}` : ''}</a> (crate eve-wasm) · LGPL-3.0-or-later</>],
     ['Engine J (C++20 → WASM, optional speed reference)', <>{commit((build?.engine_j_repo ?? 'EX-CT/eve-dogma-lab').replace('EX-CT/', ''), build?.engine_j)} · <a href={`https://github.com/${build?.engine_j_repo ?? 'EX-CT/eve-dogma-lab'}/tree/${build?.engine_j ?? 'variant-j'}/${build?.engine_j_dir ?? ''}`}>{(build?.engine_j_repo ?? 'eve-dogma-lab').replace('EX-CT/', '')}{build?.engine_j_dir ? `/${build.engine_j_dir}` : ''}</a> · LGPL-3.0-or-later</>],
     ['Engine D (TypeScript)', <>{commit('eve-dogma-lab', build?.engine_d)} · <a href={`${GH}/eve-dogma-lab/tree/variant-d`}>variant-d</a></>],
     [t('Dataset'), <span className="about-dataset">SDE {raw.sde?.build} ({raw.sde?.release_date?.slice(0, 10)}) · r{raw.dataset_revision ?? 1} · {raw.generator}
@@ -34,6 +34,7 @@ export function About({ cfg, status, st, ds, build, graphBackend }: { cfg: Engin
       <ul className="about-links">
         <li><a href={`${GH}/eve-fit-web`}>eve-fit-web</a> — {t('this web UI')}</li>
         <li><a href={`${GH}/eve-dogma-rs`}>eve-dogma-rs</a> — {t('reference engine (Rust)')}</li>
+        <li><a href={`${GH}/eve-dogma`}>eve-dogma</a> — {t('mainline engine (Rust, F)')}</li>
         <li><a href={`${GH}/eve-dogma-lab`}>eve-dogma-lab</a> — {t('engine variants')}</li>
         <li><a href={`${GH}/eve-dogma-bench`}>eve-dogma-bench</a> — {t('correctness / speed bench vs Pyfa')}</li>
         <li><a href={`${GH}/eve-sde-pipeline`}>eve-sde-pipeline</a> — {t('SDE dataset and presets')}</li>

@@ -19,7 +19,7 @@ export function defaultEngineConfig(): EngineConfig {
     httpUrl: q.get('http') ?? 'http://127.0.0.1:8080',
     datasetUrl: new URL(`${base}data/dataset.json.gz`, location.href).href,
     engineUrl: new URL(`${base}engines/d/eve-dogma-ts.mjs`, location.href).href,
-    wasmUrl: new URL(`${base}engines/f/eve_dogma_f.wasm`, location.href).href,
+    wasmUrl: new URL(`${base}engines/f/eve_wasm.wasm`, location.href).href,
     jEngineUrl: new URL(`${base}engines/j/evej.mjs`, location.href).href,
   };
 }

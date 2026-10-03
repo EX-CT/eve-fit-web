@@ -59,7 +59,7 @@ async function initWasm(wasmUrl: string): Promise<string> {
     const resp = JSON.parse(call('rpc', JSON.stringify({ id: 1, method, params })));
     return resp.result ?? resp.error ?? null;
   } : null;
-  let label = 'eve-dogma-f (wasm)';
+  let label = 'eve-wasm (F)';
   try { const probe: any = calcFn({ schema_version: 1, ship: { type_id: 587 } }); if (probe?.meta?.engine) label = `${probe.meta.engine} (wasm) · SDE ${probe.meta.sde_build}`; } catch { /* ignore */ }
   return label;
 }
