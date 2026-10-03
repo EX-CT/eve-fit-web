@@ -71,6 +71,12 @@ used before the ids were added (2026-10-03):
 | `web.e2e.dna-import` | DNA import (plain and fitting link) round trip: same DNA back, ship, modules, charges, drones launched |
 | `web.e2e.library-reload-persistence` | fits, folders and tags survive a reload (IndexedDB) |
 | `web.e2e.library-migration` | the localStorage library of earlier versions moves to IndexedDB (copy kept) |
+| `web.e2e.mining-yield` | mining section shows the engine yield (modules + drones = total m³/s); F/http exact, other engines: hidden when not returned |
+| `web.e2e.outgoing-reps` | outgoing remote armor reps and capacitor transfer shown with the engine values |
+| `web.e2e.bombing-table` | bombs to kill per damage type and Covert Ops level match the engine |
+| `web.e2e.overheat-burnout` | overheated modules show the expected burnout time (modules[].heat) |
+| `web.e2e.drone-ehp` | each drone row shows the EHP of one drone (drones.items[]) |
+| `web.e2e.validation-problems` | engine violations (capital module on a frigate, slots, turrets, rig size, powergrid) are listed in Problems with their labels |
 | `web.e2e.shipstats-export` | ship stats export (engine stats + formats module) |
 | `web.e2e.whatif-apply` | applying a scenario changes the fit; undo restores it |
 | `web.e2e.whatif-charges` | what-if ranks compatible charges |
@@ -96,6 +102,7 @@ built from the engines.lock pin (`REQUIRE_FORMATS_WASM=1`: the WASM formats test
 | `web.unit.builtin-esi` | `src/formats/builtin.test.ts` | ESI fitting JSON round trip (slots from flags, drone bay) |
 | `web.unit.builtin-limits` | `src/formats/builtin.test.ts` | Pyfa-only formats need the eve-fit-formats module |
 | `web.unit.builtin-multi-eft` | `src/formats/builtin.test.ts` | a Pyfa multi-export splits into one fit per header |
+| `web.unit.charges-valid-only` | `src/data/charges.test.ts` | the charge picker offers only charges of the module charge groups, size and capacity |
 | `web.unit.compare-best-delta` | `src/fit/metrics.test.ts` | best per direction (high dps, low align) and deltas vs the first fit |
 | `web.unit.compare-ties-missing` | `src/fit/metrics.test.ts` | equal values mark no best; all-zero rows dropped; errored stats are missing |
 | `web.unit.formats-wasm-active` | `src/formats/wasm.test.ts` | the formats layer uses the WASM module once loaded |
@@ -119,6 +126,7 @@ built from the engines.lock pin (`REQUIRE_FORMATS_WASM=1`: the WASM formats test
 | `web.unit.library-rename-duplicate-delete` | `src/fit/library.test.ts` | rename, duplicate (new id, folder and tags kept), delete drops links to the fit |
 | `web.unit.library-search-tags` | `src/fit/library.test.ts` | search by name, ship (English), folder, notes and tag:<name>; tags normalised |
 | `web.unit.metric-lock-range-km` | `src/fit/metrics.test.ts` | lock range is reported in km |
+| `web.unit.module-move` | `src/fit/model.test.ts` | rack position swap and move to the end of the rack; other racks and other slots untouched |
 | `web.unit.pyfadb-fighters` | `src/formats/pyfadb.test.ts` | squadron size -1 = full squadron, ability toggles as active effect ids |
 | `web.unit.pyfadb-fits` | `src/formats/pyfadb.test.ts` | every saved fit with ship, mode, notes, module states, charges, cargo |
 | `web.unit.pyfadb-links-profiles` | `src/formats/pyfadb.test.ts` | characters, profiles, implant sets, projected and command fits resolve to library ids |
@@ -134,6 +142,17 @@ built from the engines.lock pin (`REQUIRE_FORMATS_WASM=1`: the WASM formats test
 | `web.unit.whatif-charges` | `src/fit/whatif.test.ts` | a charge scenario loads every module of that type |
 | `web.unit.whatif-offline-remove` | `src/fit/whatif.test.ts` | offline and remove edits, out-of-range indices ignored |
 | `web.unit.whatif-variations` | `src/fit/whatif.test.ts` | meta variations of a module, the fitted type excluded, charge kept |
+
+## Suites (CI, browser build, wasm-worker = F)
+
+Not single checks but bench corpora scored by the bench's own tools; each gates the deploy.
+
+| suite | what | pin |
+|---|---|---|
+| `web-bench` | eve-dogma-bench cases/ (1.9.0, 331 cases), `tools/browser-dogma-bench.py` | `DOGMA_BENCH_SHA` |
+| `web-graphs` | graphs 0.2 case suite (178 cases) | `GRAPHS_BENCH_SHA` |
+| `web-ext` | ext/cases + ext/unit (202: mining, outgoing, bombing, drone/fighter EHP, heat, fleet.buffs, overrides, probe_size, validity, vs_target_profile), `ext/tools/score.py`, every case | `EXT_BENCH_SHA` |
+| `web-effects` | effects/ micro-fits (2378), `effects/tools/score.py`, at least `EFFECTS_MIN` (2353) | `EXT_BENCH_SHA` |
 
 ## Ids from the eve3 gap list
 
