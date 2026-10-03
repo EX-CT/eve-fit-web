@@ -4,7 +4,7 @@ import type { Slot } from '../data/dataset';
 export type ModState = 'offline' | 'online' | 'active' | 'overheated';
 export interface Mutation { base_type_id: number; mutaplasmid_type_id: number; attributes: Record<string, number> }
 export interface FitModule { type_id: number; slot: Slot; state: ModState; charge_type_id?: number | null; mutation?: Mutation | null; spool?: number | null }
-export interface FitDrone { type_id: number; quantity: number; active: number }
+export interface FitDrone { type_id: number; quantity: number; active: number; mutation?: Mutation | null }
 export interface FitFighter { type_id: number; quantity: number; active: boolean; abilities?: number[] | null }
 export interface FitBooster { type_id: number; side_effects?: number[] }
 export interface Projected {
@@ -71,7 +71,7 @@ export function toRequest(fit: Fit, lib: Library, depth = 0): Record<string, unk
     ship: { type_id: fit.ship_type_id, mode_type_id: fit.mode_type_id ?? null },
     character: { skills: { default_level: ch?.default_level ?? 5, levels: ch?.levels ?? {} }, security_status: ch?.security_status ?? null },
     modules: fit.modules.map(moduleReq),
-    drones: fit.drones.map((d) => ({ type_id: d.type_id, quantity: d.quantity, active: d.active })),
+    drones: fit.drones.map((d) => ({ type_id: d.type_id, quantity: d.quantity, active: d.active, ...(d.mutation ? { mutation: d.mutation } : {}) })),
     fighters: fit.fighters.map((f) => ({ type_id: f.type_id, quantity: f.quantity, active: f.active, abilities: f.abilities ?? null })),
     implants: fit.implants,
     boosters: fit.boosters.map((b) => ({ type_id: b.type_id, side_effects: b.side_effects ?? [] })),

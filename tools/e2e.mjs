@@ -179,11 +179,23 @@ const dna = await p.evaluate(() => document.querySelector('textarea.eft').value)
 check('web.e2e.dna-export: DNA export', /^626:/.test(dna) && dna.endsWith('::'), dna);
 await clickText('.dialog button', 'Export multibuy');
 const mb = await p.evaluate(() => document.querySelector('textarea.eft').value);
-check('web.e2e.multibuy-export: multibuy export', mb.startsWith('Vexor x1') && mb.includes('Hammerhead II x5') && mb.includes('Unstable Stasis Webifier Mutaplasmid x1'), mb.split('\n').length + ' lines');
+check('web.e2e.multibuy-export: multibuy export', /^Vexor\n/.test(mb) && mb.includes('Hammerhead II x5') && mb.includes('Heavy Neutron Blaster II x2'), mb.split('\n').length + ' lines');
 await clickText('.dialog button', 'Export ESI JSON');
 const esi = await p.evaluate(() => document.querySelector('textarea.eft').value);
 let ej = null; try { ej = JSON.parse(esi); } catch {}
-check('web.e2e.esi-json-export: ESI JSON export', ej?.ship_type_id === 626 && ej.items.some((i) => i.flag === 'HiSlot0') && ej.items.some((i) => i.flag === 'DroneBay'), ej ? ej.items.length + ' items' : esi.slice(0, 80));
+check('web.e2e.esi-json-export: ESI JSON export', ej?.ship_type_id === 626 && ej.items.some((i) => i.flag === 27 || i.flag === 'HiSlot0') && ej.items.some((i) => i.flag === 87 || i.flag === 'DroneBay'), ej ? ej.items.length + ' items' : esi.slice(0, 80));
+// Pyfa formats through the eve-fit-formats module: EVE XML export, ship-stats text (engine stats of the shipstats request)
+const prov = await p.evaluate(() => document.querySelector('.formats-provider')?.dataset.provider);
+check('web.e2e.formats-provider: imports / exports run through eve-fit-formats (WASM)', prov === 'eve-fit-formats', prov);
+let xml = '';
+if (await p.$('.dialog button.export-xml')) { await p.click('.dialog button.export-xml'); xml = await p.evaluate(() => document.querySelector('textarea.eft').value); }
+check('web.e2e.xml-export: EVE XML export', xml.includes('<fitting name="E2E Vexor">') && xml.includes('base_type="Stasis Webifier II"'), xml.split('\n').length + ' lines');
+let ss = '';
+if (await p.$('.dialog button.export-shipstats')) {
+  await p.click('.dialog button.export-shipstats');
+  ss = await p.waitForFunction(() => { const v = document.querySelector('textarea.eft').value; return v && !v.startsWith('<?xml') ? v : null; }, { timeout: 30000 }).then((h) => h.jsonValue()).catch(() => '');
+}
+check('web.e2e.shipstats-export: ship stats export (engine stats + formats module)', /Vexor/.test(ss) && /DPS|dps/.test(ss), ss.split('\n').slice(0, 2).join(' / '));
 if (await p.$('.dialog')) await clickText('.dialog button', 'Close');
 
 // implant sets (SDE presets): applying High-grade Snake fills slots 1-6, keeps the slot-7+ implant, raises velocity
@@ -235,7 +247,18 @@ await clickText('.dialog button', 'Import');
 await new Promise((r) => setTimeout(r, 500));
 await new Promise((r) => setTimeout(r, 1500));
 const imp = await p.evaluate(() => ({ open: !!document.querySelector('.dialog'), msg: document.querySelector('.dialog p.muted')?.textContent ?? '', ship: window.__lastStats?.ship?.name, mods: window.__lastStats?.modules?.length }));
-check('web.e2e.esi-json-reimport: ESI JSON re-import', !imp.open && imp.ship === 'Vexor' && imp.mods === 15, imp.msg || `${imp.ship}, ${imp.mods} modules`);
+// ESI fitting JSON carries no mutation data: like Pyfa, the import drops the abyssal web (15 -> 14 modules)
+check('web.e2e.esi-json-reimport: ESI JSON re-import', !imp.open && imp.ship === 'Vexor' && imp.mods === 14, imp.msg || `${imp.ship}, ${imp.mods} modules`);
+
+// EVE XML re-import (formats module) -> new fit with the mutated web
+if (xml) {
+  await clickText('header button', 'Import / export');
+  await p.evaluate((t) => { const ta = document.querySelector('textarea.eft'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(ta, t); ta.dispatchEvent(new Event('input', { bubbles: true })); }, xml);
+  await clickText('.dialog button', 'Import');
+  await new Promise((r) => setTimeout(r, 1500));
+  const xi = await p.evaluate(() => ({ open: !!document.querySelector('.dialog'), msg: document.querySelector('.dialog p.muted')?.textContent ?? '', ship: window.__lastStats?.ship?.name, mods: window.__lastStats?.modules?.length, abyssal: document.body.textContent.includes('Abyssal Stasis Webifier') }));
+  check('web.e2e.xml-reimport: EVE XML re-import keeps the mutated module', !xi.open && xi.ship === 'Vexor' && xi.mods === 15 && xi.abyssal, xi.msg || `${xi.ship}, ${xi.mods} modules`);
+} else check('web.e2e.xml-reimport: EVE XML re-import keeps the mutated module', false, 'no XML export');
 
 // multi-fit EFT paste + fit browser grouping
 await clickText('header button', 'Import / export');

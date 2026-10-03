@@ -3,7 +3,8 @@ import { loadSdePresets } from './data/sdePresets';
 import { setUiLang, t } from './i18n';
 import { Dataset } from './data/dataset';
 import { createEngine, type Engine, type FitStats } from './engine/adapter';
-import { defaultState, parseDna, parseEft } from './fit/formats';
+import { formatsRpc, importFit, initFormats } from './formats';
+import { defaultState } from './fit/states';
 import { newFit, toRequest, uid, type Fit, type Library } from './fit/model';
 import { useAppState } from './store';
 import { CharacterEditor } from './ui/Character';
@@ -70,7 +71,12 @@ export default function App() {
 
   // dataset (UI copy) from the pipeline release, deployed with the site
   useEffect(() => {
-    Dataset.load(settings.engine.datasetUrl, setLoadMsg).then((d) => { d.lang = settings.lang; setDs(d); }, (e) => setLoadMsg(`failed to load dataset: ${e.message}`));
+    // the formats layer (eve-fit-formats WASM, same pin as engine F) must be ready before ?eft= / ?dna= are parsed;
+    // ?formats=builtin forces the built-in TypeScript parsers
+    const fq = new URLSearchParams(location.search).get('formats');
+    const formatsUrl = fq === 'builtin' ? null : new URL(`${import.meta.env.BASE_URL}engines/f/eve_fit_formats_wasm.wasm`, location.href).href;
+    Promise.all([Dataset.load(settings.engine.datasetUrl, setLoadMsg), initFormats(formatsUrl)])
+      .then(([d, fs]) => { d.lang = settings.lang; (window as any).__eveFormats = fs; (window as any).__eveFormatsRpc = formatsRpc(); setDs(d); }, (e) => setLoadMsg(`failed to load dataset: ${e.message}`));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -137,10 +143,10 @@ export default function App() {
     if (!ds) return;
     const q = new URLSearchParams(location.search);
     try {
-      if (q.get('dna')) { addFit(parseDna(ds, q.get('dna')!).fit); return; }
-      if (q.get('eft')) { addFit(parseEft(ds, q.get('eft')!).fit); return; }
+      if (q.get('dna')) { addFit(importFit(ds, q.get('dna')!, 'dna')); return; }
+      if (q.get('eft')) { addFit(importFit(ds, q.get('eft')!, 'eft')); return; }
     } catch (e) { console.warn(e); }
-    if (!Object.keys(lib.fits).length) addFit(parseEft(ds, DEMO_EFT).fit);
+    if (!Object.keys(lib.fits).length) addFit(importFit(ds, DEMO_EFT, 'eft'));
     else if (!fit) update((s) => ({ ...s, settings: { ...s.settings, activeFitId: Object.keys(s.lib.fits)[0] } }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ds]);
@@ -268,7 +274,7 @@ export default function App() {
       {info != null && <ItemInfo ds={ds} id={info} fitted={fitted} fittedNote={fittedNote} onClose={() => setInfo(null)}
         overrides={fit ? Object.fromEntries((fit.overrides ?? []).filter((o) => o.type_id === info).map((o) => [o.attribute_id, o.value])) : undefined}
         onOverride={fit ? (a, v) => setFit({ ...fit, overrides: [...(fit.overrides ?? []).filter((o) => !(o.type_id === info && o.attribute_id === a)), ...(v == null ? [] : [{ type_id: info, attribute_id: a, value: v }])] }) : undefined} />}
-      {showIO && <ImportExport ds={ds} fit={fit} stats={stats} onImport={(f) => { addFit(f); setShowIO(false); }} onClose={() => setShowIO(false)} />}
+      {showIO && <ImportExport ds={ds} fit={fit} lib={lib} stats={stats} calc={engineReady && engineRef.current ? (r) => engineRef.current!.calc(r) : null} onImport={(f) => { addFit(f); setShowIO(false); }} onClose={() => setShowIO(false)} />}
     </div>
   );
 }

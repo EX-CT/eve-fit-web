@@ -1,7 +1,8 @@
 // JSONL RPC over the site's active engine backend, inside headless Chrome:
 //   node tools/browser-rpc.mjs <site-url> <engine-id>           < {"id","method","params"} lines   > {"id","result"} lines
 //   node tools/browser-rpc.mjs <site-url> <engine-id> --batch   < FitRequest lines                > FitStats lines (bench batch mode)
-// Methods: graph, graph_specs, calc. The requests go through the page's Engine adapter (Web Worker + WASM for the
+// Methods: graph, graph_specs, calc (engine), and eft_parse / eft_export / format_import / format_export (the page's
+// eve-fit-formats WASM module, like `eve-fit serve-stdio`). The requests go through the page's Engine adapter (Web Worker + WASM for the
 // in-browser backends), i.e. exactly the build that is deployed. Used to run the eve-dogma-bench graphs-round2 suite
 // (graphs/run_graphs.py --rpc-cmd) against the browser build.
 import puppeteer from 'puppeteer-core';
@@ -27,6 +28,8 @@ try {
         if (method === 'graph') return e.graph ? e.graph(params) : { error: { code: 'UNKNOWN_METHOD', message: 'backend has no graph RPC' } };
         if (method === 'graph_specs') return e.graphSpecs ? e.graphSpecs() : null;
         if (method === 'calc') return e.calc(params);
+        if (['eft_parse', 'eft_export', 'format_import', 'format_export'].includes(method))
+          return window.__eveFormatsRpc ? window.__eveFormatsRpc(method, params) : { error: { code: 'UNKNOWN_METHOD', message: `${method}: no eve-fit-formats module` } };
         return { error: { code: 'UNKNOWN_METHOD', message: method } };
       }, m.method ?? 'calc', m.params ?? null);
       out = { id, result };

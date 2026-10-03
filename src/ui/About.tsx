@@ -2,6 +2,7 @@
 import type { Dataset } from '../data/dataset';
 import { BACKENDS, type EngineConfig, type FitStats } from '../engine/adapter';
 import { DEFAULT_BACKEND } from '../engine/defaults';
+import { formatsStatus } from '../formats';
 import { t } from '../i18n';
 
 export interface BuildInfo { dataset_tag?: string; engine_d?: string; engine_f?: string; engine_f_repo?: string; engine_f_dir?: string; engine_j?: string; engine_j_repo?: string; engine_j_dir?: string; web?: string; built_at?: string; run?: string; default_engine?: string }
@@ -18,6 +19,9 @@ export function About({ cfg, status, st, ds, build, graphBackend }: { cfg: Engin
     [t('Engine status'), <span className="about-status">{status}</span>],
     [t('Engine (reported)'), <span className="about-engine">{st?.meta?.engine ?? '—'}{st?.meta?.sde_build ? ` · SDE ${st.meta.sde_build}` : ''}</span>],
     [t('Graphs computed by'), <span className="about-graphs">{graphBackend ? <><code>{graphBackend}</code>{graphBackend !== cfg.backend ? ` (${t('graph RPC fallback; fit stats from')} ${cfg.backend})` : ''}</> : t('UI approximation (backend has no graph RPC)')}</span>],
+    [t('Fit formats'), <span className="about-formats" data-provider={formatsStatus().provider}>{formatsStatus().provider === 'eve-fit-formats'
+      ? <>eve-fit-formats (WASM) · {commit((build?.engine_f_repo ?? 'EX-CT/eve-dogma').replace('EX-CT/', ''), build?.engine_f)} (crate eve-fit-formats-wasm)</>
+      : <>{formatsStatus().label}{formatsStatus().note ? ` · ${formatsStatus().note}` : ''}</>}</span>],
     [t('Default backend'), <code>{build?.default_engine || DEFAULT_BACKEND}</code>],
     ['Engine F (mainline; Rust → WASM, stats + graphs)', <>{commit((build?.engine_f_repo ?? 'EX-CT/eve-dogma').replace('EX-CT/', ''), build?.engine_f)} · <a href={`https://github.com/${build?.engine_f_repo ?? 'EX-CT/eve-dogma'}/tree/${build?.engine_f ?? 'main'}/${build?.engine_f_dir ?? ''}`}>{(build?.engine_f_repo ?? 'eve-dogma').replace('EX-CT/', '')}{build?.engine_f_dir ? `/${build.engine_f_dir}` : ''}</a> (crate eve-wasm) · LGPL-3.0-or-later</>],
     ['Engine J (C++20 → WASM, optional speed reference)', <>{commit((build?.engine_j_repo ?? 'EX-CT/eve-dogma-lab').replace('EX-CT/', ''), build?.engine_j)} · <a href={`https://github.com/${build?.engine_j_repo ?? 'EX-CT/eve-dogma-lab'}/tree/${build?.engine_j ?? 'variant-j'}/${build?.engine_j_dir ?? ''}`}>{(build?.engine_j_repo ?? 'eve-dogma-lab').replace('EX-CT/', '')}{build?.engine_j_dir ? `/${build.engine_j_dir}` : ''}</a> · LGPL-3.0-or-later</>],

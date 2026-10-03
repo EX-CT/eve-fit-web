@@ -36,7 +36,7 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
   - violations and engine warnings
 - **Price:** fit value (ship, fittings incl. loaded charges and mutaplasmids, drones/fighters, implants/boosters, cargo) from the public ESI market prices endpoint. Opt-in button, cached for 6 h.
 - **Graphs:** DPS vs range (turret hit chance, missile application, drones), capacitor vs time, regen vs fill %, speed and distance vs time, lock time vs signature, warp time vs distance. On a backend with the graph RPC (CONTRACT-GRAPHS rev 0.2: `graph_specs` / `graph`: the default `wasm-worker` (F), and `wasm-j-worker` through F) the engine computes these graphs, and the application profile (best ammo), EWAR and remote-repair graphs are added. On other backends, or if an engine graph call fails, the UI computes approximations from one stats result. A label next to the graph says which kind you are looking at.
-- **Import and export:** EFT text (including Pyfa-style mutated module blocks `[N] Base` / mutaplasmid / attribute values), DNA, ESI fitting JSON (import and export), multibuy list (export), and share links (`?dna=`, `?eft=`).
+- **Import and export (formats layer, `src/formats`):** every fit text goes through the formats layer, which returns structured fits (FitRequest JSON) before any engine call; the engines take structured fits and skills only. The layer runs the **eve-fit-formats** WASM module (crate `eve-fit-formats-wasm` of EX-CT/eve-dogma, built from the same `engines.lock` pin as engine F; Pyfa-exact formats): EFT (with mutated-module blocks, several fits at once), DNA (and chat links), ESI fitting JSON, EVE client XML, EFT config files (file import), multibuy and Pyfa's ship-stats text (computed from the engine's stats of the fit). Share links `?eft=` / `?dna=` use it too. Without the module (local dev without a Rust build, or `?formats=builtin`) the built-in TypeScript parsers (EFT, DNA, ESI JSON, multibuy) take over; the dialog and the About tab say which one is active.
 - **Fit browser:** saved fits grouped by ship group, search, duplicate/delete, JSON backup and restore of the whole library (fits, characters, profiles). Pasting several EFT fits at once imports them all.
 - **Language:** English / 中文 switch for item names (dataset `names_i18n`) and the main UI labels.
 - **Options:** factor in reload, default spool-up, RAH adapt/unadapted. Fits, characters and profiles are stored in localStorage.
@@ -75,7 +75,14 @@ gh release download -R EX-CT/eve-sde-pipeline -p 'dataset-*.json.gz' -O public/d
 # engine D: (in eve-dogma-lab@variant-d/variant-d) npm ci && npm run build:web; copy dist-web/eve-dogma-ts.mjs to public/engines/d/
 npm run dev
 node tools/smoke.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker   # headless check
-node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-end (36 checks); engine arg may be 'http&http=http://127.0.0.1:8787'
+node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-end; engine arg may be 'http&http=http://127.0.0.1:8787'
+npm test                                                             # unit tests (vitest, src/**/*.test.ts)
+```
+
+Engine F and the formats module (Rust, stable + `wasm32-unknown-unknown`; commit from `ENGINE_F_SRC` in engines.lock):
+```bash
+EVE_DOGMA_DATASET=$PWD/public/data/dataset.json.gz cargo build --profile release-small --target wasm32-unknown-unknown -p eve-wasm -p eve-fit-formats-wasm
+cp target/wasm32-unknown-unknown/release-small/{eve_wasm,eve_fit_formats_wasm}.wasm public/engines/f/
 ```
 
 ## Deployment
@@ -84,6 +91,16 @@ node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-
 2. Build engine D and engine F (WASM).
 3. Build the site and run a headless Chrome smoke test (the demo fit must compute), then the UI end-to-end test (`tools/e2e.mjs`: EFT import, projected web, beacon, graphs, booster side effect, fleet buff, EFT/DNA export, custom character, fighter abilities) on the TS, F (`wasm-worker`) and J backends. On F that run checks that every graph is engine-computed, including a lock-time value against the formula. The same pinned F commit, built natively, runs the e2e through `tools/engine-bridge.mjs` on the `http` backend. Then, inside headless Chrome against the built `wasm-worker`: the CONTRACT-GRAPHS 0.2 case suite (eve-dogma-bench `graphs-round2`, pinned as `GRAPHS_BENCH_SHA`; `python3 graphs/run_graphs.py --name web --rpc-cmd "node tools/browser-rpc.mjs <site-url> wasm-worker"`) and the bench 1.9.0 stats corpus (`DOGMA_BENCH_SHA`, `tools/browser-dogma-bench.py`). Any failure on the default backend stops the deploy.
 4. Deploy to GitHub Pages.
+
+## Tests
+* Unit tests: `npm test` (vitest, `src/**/*.test.ts`, node). They use a committed dataset slice
+  (`src/test/fixtures/mini-dataset.json.gz`, rebuilt with `node tools/make-test-dataset.mjs`) and, when present,
+  `public/engines/f/eve_fit_formats_wasm.wasm` (CI requires it: `REQUIRE_FORMATS_WASM=1`).
+* End to end: `tools/e2e.mjs` in headless Chrome against a running site.
+* Test ids: unit tests are named `web.unit.<slug>: …`, e2e checks `web.e2e.<slug>: …`; [docs/test-ids.md](docs/test-ids.md)
+  maps the e2e ids to the names used before.
+* CI (`pages.yml`) gates the deploy on engine F and the formats module building, the unit tests, the e2e on
+  ts-worker and wasm-worker (F), the bench 1.9.0 corpus (331 cases) and the graphs 0.2 suite (178 cases) in the browser build.
 
 ## Licence
 - UI code: MIT.
