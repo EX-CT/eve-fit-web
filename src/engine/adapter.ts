@@ -29,12 +29,13 @@ export interface GraphSpecs { contract?: string; graphs: Record<string, { axes?:
 
 const asSpecs = (r: any): GraphSpecs | null => (r && !r.error && r.graphs && typeof r.graphs === 'object' ? r : null);
 
-export interface EngineConfig { backend: string; httpUrl: string; datasetUrl: string; engineUrl: string; wasmUrl: string; g4WasmUrl?: string }
+export interface EngineConfig { backend: string; httpUrl: string; datasetUrl: string; engineUrl: string; wasmUrl: string; g4WasmUrl?: string; g1WasmUrl?: string }
 
 export const BACKENDS: EngineInfo[] = [
   { id: 'ts-worker', label: 'In-browser: TypeScript engine (variant D) in a Web Worker' },
   { id: 'wasm-worker', label: 'In-browser: Rust→WASM engine (variant F, data compiled in) in a Web Worker' },
   { id: 'wasm-g4-worker', label: 'In-browser: variant F + graph RPC (graphs-g4, round-2 prototype) in a Web Worker' },
+  { id: 'wasm-g1-worker', label: 'In-browser: variant E + graphs (graphs-g1, round-2 candidate, GPL-3.0) in a Web Worker' },
   { id: 'http', label: 'Local/remote HTTP engine (POST {url}/v1/calc, e.g. variant C serve-http)' },
 ];
 
@@ -103,6 +104,7 @@ export function createEngine(cfg: EngineConfig): Engine {
   switch (info.id) {
     case 'http': return new HttpEngine(info, cfg.httpUrl);
     case 'wasm-worker': return new WorkerEngine(info, { kind: 'wasm', wasmUrl: cfg.wasmUrl });
+    case 'wasm-g1-worker': return new WorkerEngine(info, { kind: 'wasm', wasmUrl: cfg.g1WasmUrl ?? cfg.wasmUrl.replace('/engines/f/eve_dogma_f.wasm', '/engines/g1/eve_dogma_g1_wasm.wasm'), datasetUrl: cfg.datasetUrl });
     case 'wasm-g4-worker': return new WorkerEngine(info, { kind: 'wasm', wasmUrl: cfg.g4WasmUrl ?? cfg.wasmUrl.replace('/engines/f/', '/engines/g4/') });
     default: return new WorkerEngine(info, { kind: 'ts', engineUrl: cfg.engineUrl, datasetUrl: cfg.datasetUrl });
   }

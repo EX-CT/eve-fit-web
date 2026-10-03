@@ -5,3 +5,5 @@
 GRAPHS_G4_SHA=33fd7439edcb1cf63ac09c7107776092261b959b
 # CONTRACT-GRAPHS 0.2 case suite (eve-dogma-bench, branch graphs-round2) run in headless Chrome against wasm-g4-worker
 GRAPHS_BENCH_SHA=8c40921911aed9a7d7f032a2f9d4c43986ca0232
+# variant E + graphs (eve-dogma-lab, branch graphs-g1; round-2 candidate, backend wasm-g1-worker via engines/g1-wasm)
+GRAPHS_G1_SHA=1c8424c24b1a6b071505269667d774bfb09ced3c

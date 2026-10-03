@@ -4,7 +4,7 @@ import { BACKENDS, type EngineConfig, type FitStats } from '../engine/adapter';
 import { DEFAULT_BACKEND } from '../engine/defaults';
 import { t } from '../i18n';
 
-export interface BuildInfo { dataset_tag?: string; engine_d?: string; engine_f?: string; engine_g4?: string; web?: string; built_at?: string; run?: string; default_engine?: string }
+export interface BuildInfo { dataset_tag?: string; engine_d?: string; engine_f?: string; engine_g4?: string; engine_g1?: string; web?: string; built_at?: string; run?: string; default_engine?: string }
 
 const GH = 'https://github.com/EX-CT';
 const commit = (repo: string, sha?: string) => (sha ? <a href={`${GH}/${repo}/commit/${sha}`}><code>{sha}</code></a> : <span className="muted">n/a</span>);
@@ -21,6 +21,7 @@ export function About({ cfg, status, st, ds, build }: { cfg: EngineConfig; statu
     ['Engine D (TypeScript)', <>{commit('eve-dogma-lab', build?.engine_d)} · <a href={`${GH}/eve-dogma-lab/tree/variant-d`}>variant-d</a></>],
     ['Engine F (Rust → WASM)', <>{commit('eve-dogma-lab', build?.engine_f)} · <a href={`${GH}/eve-dogma-lab/tree/variant-f`}>variant-f</a></>],
     ['Engine F + graphs (round-2 prototype)', <>{commit('eve-dogma-lab', build?.engine_g4)} · <a href={`${GH}/eve-dogma-lab/tree/graphs-g4`}>graphs-g4</a></>],
+    ['Engine E + graphs (round-2 candidate)', <>{commit('eve-dogma-lab', build?.engine_g1)} · <a href={`${GH}/eve-dogma-lab/tree/graphs-g1`}>graphs-g1</a></>],
     [t('Dataset'), <span className="about-dataset">SDE {raw.sde?.build} ({raw.sde?.release_date?.slice(0, 10)}) · r{raw.dataset_revision ?? 1} · {raw.generator}
       {build?.dataset_tag ? <> · <a href={`${GH}/eve-sde-pipeline/releases/tag/${build.dataset_tag}`}>{build.dataset_tag}</a></> : null}</span>],
     [t('Site build'), <>{commit('eve-fit-web', build?.web)} · {local(build?.built_at)}{build?.run ? <> · <a href={build.run}>CI run</a></> : null}</>],

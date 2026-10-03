@@ -25,3 +25,7 @@ dist-ssr
 public/data/
 public/engines/
 public/build-info.json
+
+# graphs-g1 wasm wrapper build
+/lab-g1
+engines/g1-wasm/target/

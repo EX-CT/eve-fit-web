@@ -47,9 +47,10 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
 | `ts-worker` | browser (Web Worker) | variant D TypeScript bundle, built in CI from `EX-CT/eve-dogma-lab@variant-d`. It loads the same release dataset |
 | `wasm-worker` | browser (Web Worker) | variant F Rust→WASM (C-ABI `calc`), built in CI with the release dataset compiled in |
 | `wasm-g4-worker` | browser (Web Worker) | **round-2 prototype**: eve-dogma-lab `graphs-g4` (variant F plus a graph layer, 178/178 on CONTRACT-GRAPHS 0.2), WASM `calc` + `rpc` (`graph`, `graph_specs`). Built in CI from the commit pinned in [`engines.lock`](engines.lock) (`GRAPHS_G4_SHA`; bump = edit that line and push). The final graph engine waits for the round-2 winner |
+| `wasm-g1-worker` | browser (Web Worker) | **round-2 candidate**: eve-dogma-lab `graphs-g1` (variant E, the Pyfa-faithful Rust port, plus graphs), built from `engines/g1-wasm` (a wasm32-wasip1 wrapper with C-ABI `init`/`calc`/`rpc`; the worker supplies the dataset bytes and a minimal WASI shim). Pinned as `GRAPHS_G1_SHA` in `engines.lock`. **GPL-3.0-or-later** (`engines/g1-wasm/LICENSE`), loaded as a separate program by the MIT site |
 | `http` | any engine server | `POST {url}/v1/calc`, `GET {url}/v1/meta` (graph RPC: `POST {url}/v1/graph`, `GET {url}/v1/graph_specs`); e.g. variant C `serve-http`, through `tools/engine-bridge.mjs` for CORS |
 
-Pick a backend in the header, or with `?engine=ts-worker|wasm-worker|wasm-g4-worker|http&http=http://127.0.0.1:8787`.
+Pick a backend in the header, or with `?engine=ts-worker|wasm-worker|wasm-g4-worker|wasm-g1-worker|http&http=http://127.0.0.1:8787`.
 Adding another engine means writing one class that implements `Engine` (`init`, `calc`, and optionally `graph` / `graphSpecs`). The UI code does not change.
 
 Local HTTP engine for the hosted site:

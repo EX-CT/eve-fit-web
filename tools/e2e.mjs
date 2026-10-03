@@ -99,7 +99,7 @@ await clickText('.center .tabs button', 'Graphs');
 // Backends with the graph RPC (CONTRACT-GRAPHS 0.2) must render engine-computed series; the others the UI approximation.
 // E2E_GRAPH_RPC=1/0 forces it; otherwise wasm-g4-worker has it, and an http engine has it if it answers graph_specs.
 const GRAPH_RPC = process.env.E2E_GRAPH_RPC ? process.env.E2E_GRAPH_RPC === '1'
-  : engine === 'wasm-g4-worker' || (engine === 'http' && (await p.evaluate(async () => !!(await window.__eveEngine?.graphSpecs?.()))));
+  : ['wasm-g4-worker', 'wasm-g1-worker'].includes(engine) || (engine === 'http' && (await p.evaluate(async () => !!(await window.__eveEngine?.graphSpecs?.()))));
 const kinds = ['dps', 'cap', 'regen', 'mobility', 'lock', 'warp', ...(GRAPH_RPC ? ['app', 'ewar', 'rr'] : [])];
 if (GRAPH_RPC) await p.waitForFunction(() => document.querySelector('.graphs select option[value="app"]'), { timeout: 30000 }).catch(() => {});
 const offered = await p.evaluate(() => [...document.querySelectorAll('.graphs select option')].map((o) => o.value));
