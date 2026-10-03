@@ -84,3 +84,10 @@ label.button { display: inline-block; padding: 3px 8px; border: 1px solid #3a465
 td.best { color: #7fd17f; font-weight: 600; } .delta { font-size: 10px; color: var(--mut); } .delta.up { color: #7fd17f; } .delta.down { color: #e08a7a; }
 td.up { color: #7fd17f; } td.down { color: #e08a7a; } tr.warnrow td:first-child { color: #e0b96a; } tr.bad td { opacity: .5; }
 button.tiny { font-size: 10px; padding: 0 4px; margin-left: 3px; }
+.fitbrowser .lib-head { justify-content: space-between; align-items: center; }
+.fitbrowser .tag { font-size: 10px; padding: 0 4px; margin-left: 4px; border-radius: 3px; background: #24313d; color: #9fc3e0; }
+.fitbrowser .lib-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fitbrowser .lib-edit { flex: 1; display: flex; flex-wrap: wrap; gap: 2px; } .fitbrowser .lib-edit input { flex: 1 1 90px; min-width: 60px; }
+.fitbrowser .lib-bulk { flex-wrap: wrap; gap: 4px; background: #1b2530; padding: 4px; border-radius: 4px; margin: 4px 0; }
+.fitbrowser .lib-actions { flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.fitbrowser summary .right { float: right; }

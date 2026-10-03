@@ -6,6 +6,7 @@ import type { Dataset } from '../data/dataset';
 import type { Fit, Library } from '../fit/model';
 import type { FitStats } from '../engine/adapter';
 import { exportFit, exportShipstats, formats, formatsStatus, importFits, type ExportFormat } from '../formats';
+import { isSqlite } from '../formats/pyfadb';
 
 const EXPORTS: [ExportFormat, string][] = [['eft', 'Export EFT'], ['dna', 'Export DNA'], ['esi', 'Export ESI JSON'], ['xml', 'Export XML'], ['multibuy', 'Export multibuy'], ['shipstats', 'Export ship stats']];
 
@@ -36,7 +37,13 @@ export function ImportExport({ ds, fit, lib, stats, calc, onImport, onClose }: {
       } else show(exportFit(ds, fit, lib, f, { slotTotals: totals }));
     } catch (e) { setMsg((e as Error).message); }
   };
-  const onFile = async (file: File | undefined) => { if (file) doImport(await file.text(), file.name); };
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    // a Pyfa saved-fits database brings characters, profiles and links too: it is imported by the fit library
+    if (isSqlite(bytes)) { setMsg(t('This is a database (Pyfa saveddata.db): import it in Fits → Import / restore files…')); return; }
+    doImport(new TextDecoder().decode(bytes), file.name);
+  };
   return (
     <div className="modal" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
@@ -44,7 +51,7 @@ export function ImportExport({ ds, fit, lib, stats, calc, onImport, onClose }: {
         <textarea className="eft" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('Paste a fit (EFT, DNA, ESI JSON, EVE XML, EFT config …) and press Import.')} />
         <div className="row">
           <button onClick={() => doImport(text)} disabled={!text.trim()}>{t('Import')}</button>
-          <label className="filebtn">{t('Import file…')} <input type="file" className="importfile" accept=".xml,.cfg,.txt,.json,.eft" onChange={(e) => onFile(e.target.files?.[0])} /></label>
+          <label className="filebtn">{t('Import file…')} <input type="file" className="importfile" accept=".xml,.cfg,.txt,.json,.eft,.db" onChange={(e) => onFile(e.target.files?.[0])} /></label>
           {EXPORTS.filter(([f]) => fm.exportFormats.includes(f)).map(([f, l]) => <button key={f} className={`export-${f}`} disabled={!fit} onClick={() => doExport(f)}>{t(l)}</button>)}
           <button disabled={!fit} onClick={() => fit && show(`${location.origin}${location.pathname}?dna=${encodeURIComponent(exportFit(ds, fit, lib, 'dna'))}`)}>{t('Share link')}</button>
           <button onClick={onClose}>{t('Close')}</button>

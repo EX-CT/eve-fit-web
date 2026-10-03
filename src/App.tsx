@@ -5,8 +5,8 @@ import { Dataset } from './data/dataset';
 import { createEngine, type Engine, type FitStats } from './engine/adapter';
 import { formatsRpc, importFit, initFormats } from './formats';
 import { defaultState } from './fit/states';
-import { newFit, toRequest, uid, type Fit, type Library } from './fit/model';
-import { useAppState } from './store';
+import { newFit, toRequest, type Fit, type Library } from './fit/model';
+import { libraryReady, useAppState } from './store';
 import { CharacterEditor } from './ui/Character';
 import { EngineSettings } from './ui/EngineSettings';
 import { Fitting } from './ui/Fitting';
@@ -42,7 +42,7 @@ Small Projectile Collision Accelerator I
 `;
 
 export default function App() {
-  const [state, update] = useAppState();
+  const [state, update, storeStatus] = useAppState();
   const [ds, setDs] = useState<Dataset | null>(null);
   const [loadMsg, setLoadMsg] = useState(t('loading…'));
   const [engineStatus, setEngineStatus] = useState(t('starting engine…'));
@@ -77,7 +77,7 @@ export default function App() {
     // ?formats=builtin forces the built-in TypeScript parsers
     const fq = new URLSearchParams(location.search).get('formats');
     const formatsUrl = fq === 'builtin' ? null : new URL(`${import.meta.env.BASE_URL}engines/f/eve_fit_formats_wasm.wasm`, location.href).href;
-    Promise.all([Dataset.load(settings.engine.datasetUrl, setLoadMsg), initFormats(formatsUrl)])
+    Promise.all([Dataset.load(settings.engine.datasetUrl, setLoadMsg), initFormats(formatsUrl), libraryReady])
       .then(([d, fs]) => { d.lang = settings.lang; (window as any).__eveFormats = fs; (window as any).__eveFormatsRpc = formatsRpc(); setDs(d); }, (e) => setLoadMsg(`${t('failed to load dataset')}: ${e.message}`));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -104,7 +104,7 @@ export default function App() {
   }, [engineReady]);
 
   const setLib = useCallback((l: Library) => update((s) => ({ ...s, lib: l })), [update]);
-  const putFit = useCallback((f: Fit) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, [f.id]: f } } })), [update]);
+  const putFit = useCallback((f: Fit) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, [f.id]: { ...f, modified: new Date().toISOString() } } } })), [update]);
   // undo / redo per fit (rapid changes such as slider drags are coalesced)
   const stateRef = useRef(state); stateRef.current = state;
   const hist = useRef<Record<string, { past: Fit[]; future: Fit[]; at: number }>>({});
@@ -138,7 +138,7 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [undoRedo]);
-  const addFit = useCallback((f: Fit) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, [f.id]: f } }, settings: { ...s.settings, activeFitId: f.id } })), [update]);
+  const addFit = useCallback((f: Fit) => { const now = new Date().toISOString(); f = { ...f, created: f.created ?? now, modified: f.modified ?? now }; update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, [f.id]: f } }, settings: { ...s.settings, activeFitId: f.id } })); }, [update]);
 
   // first visit / ?dna= / ?eft= : seed a fit so the page computes something right away
   useEffect(() => {
@@ -161,18 +161,19 @@ export default function App() {
   useEffect(() => {
     if (!request || !engineReady || !engineRef.current) return;
     const my = ++seq.current;
+    const fitId = settings.activeFitId;
     const t = setTimeout(() => {
       setBusy(true);
       const t0 = performance.now();
       engineRef.current!.calc(request).then((r) => {
         if (my !== seq.current) return;
         setStats(r); setCalcErr(null); setMs(performance.now() - t0); setBusy(false);
-        (window as any).__lastStats = r;
+        (window as any).__lastStats = r; (window as any).__lastStatsFit = fitId;
       }, (e) => { if (my === seq.current) { setCalcErr(e.message); setBusy(false); } });
     }, 60);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reqJson, engineReady]);
+  }, [reqJson, engineReady, settings.activeFitId]);
 
   // "Show info" on a fitted item: one extra calc with include_attributes=all
   useEffect(() => {
@@ -251,11 +252,8 @@ export default function App() {
         <aside className="left">
           <Tabs tabs={[['market', t('Market')], ['fits', `${t('Fits')} (${Object.keys(lib.fits).length})`], ['char', t('Character')], ['profiles', t('Profiles')], ['about', t('About')]]} value={left} onChange={setLeft} />
           {left === 'market' && <Market ds={ds} onPick={pick} onInfo={setInfo} />}
-          {left === 'fits' && <FitBrowser ds={ds} lib={lib} activeId={fit?.id ?? null}
-            onOpen={(id) => update((s) => ({ ...s, settings: { ...s.settings, activeFitId: id } }))}
-            onDuplicate={(f) => addFit({ ...structuredClone(f), id: uid(), name: f.name + ' (copy)' })}
-            onDelete={(id) => { const { [id]: _x, ...rest } = lib.fits; void _x; update((s) => ({ ...s, lib: { ...s.lib, fits: rest }, settings: { ...s.settings, activeFitId: s.settings.activeFitId === id ? null : s.settings.activeFitId } })); }}
-            onRestore={(l) => update((s) => ({ ...s, lib: { ...s.lib, fits: { ...s.lib.fits, ...l.fits }, characters: { ...s.lib.characters, ...l.characters }, damagePatterns: { ...s.lib.damagePatterns, ...l.damagePatterns }, targetProfiles: { ...s.lib.targetProfiles, ...l.targetProfiles } } }))} />}
+          {left === 'fits' && <FitBrowser ds={ds} lib={lib} activeId={fit?.id ?? null} status={storeStatus}
+            onOpen={(id) => update((s) => ({ ...s, settings: { ...s.settings, activeFitId: id } }))} onLib={setLib} />}
           {left === 'char' && <CharacterEditor ds={ds} lib={lib} fit={fit} onLib={setLib} />}
           {left === 'profiles' && <Profiles lib={lib} fit={fit} onLib={setLib} onFit={setFit} />}
           {left === 'about' && <About cfg={settings.engine} status={engineStatus} st={stats} ds={ds} build={build} graphBackend={graphBackend} />}

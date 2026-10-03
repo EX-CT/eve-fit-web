@@ -29,6 +29,7 @@ function dynamicKeys(): string[] {
   keys.push('offline', 'online', 'active', 'overheated', 'em', 'thermal', 'kinetic', 'explosive', 'shield', 'armor', 'hull');
   keys.push('passive shield', 'shield repair', 'armor repair', 'hull repair', 'radar', 'ladar', 'magnetometric', 'gravimetric');
   keys.push('weapons', 'drones', 'total');
+  keys.push('IndexedDB', 'localStorage', 'memory only', 'loading…'); // FitBrowser STORE_LABEL
   keys.push('neut_gj_s', 'web_pct', 'ecm_strength', 'damp_lock_range_pct', 'td_optimal_pct', 'gd_range_pct', 'tp_sig_pct');
   return keys;
 }

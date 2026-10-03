@@ -40,9 +40,10 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
 - **What-if:** variants of the active fit computed in one go and ranked by any metric as deltas: every meta variation of a module (Pyfa's variations menu), every compatible charge, each module offline, other characters. Rows that add fitting problems are marked; *Apply* takes a variant (undo restores the fit).
 - **Multi-fit graphs:** overlay other saved fits on any graph (one engine call per fit, same x range; dashed per fit), and on engine graphs use a saved fit as the target of the damage / application / EWAR / remote-repair graphs (CONTRACT-GRAPHS 0.2 `target.fit`). The **ECM burst + scan-res damps** graph (Pyfa's `fitEcmBurstScanresDamps`) shows the enemy's lock time and lock uptime per 30 s burst, or the damage dealt before dying, against the enemy scan resolution.
 - **Import and export (formats layer, `src/formats`):** every fit text goes through the formats layer, which returns structured fits (FitRequest JSON) before any engine call; the engines take structured fits and skills only. The layer runs the **eve-fit-formats** WASM module (crate `eve-fit-formats-wasm` of EX-CT/eve-dogma, built from the same `engines.lock` pin as engine F; Pyfa-exact formats): EFT (with mutated-module blocks, several fits at once), DNA (and chat links), ESI fitting JSON, EVE client XML, EFT config files (file import), multibuy and Pyfa's ship-stats text (computed from the engine's stats of the fit). Share links `?eft=` / `?dna=` use it too. Without the module (local dev without a Rust build, or `?formats=builtin`) the built-in TypeScript parsers (EFT, DNA, ESI JSON, multibuy) take over; the dialog and the About tab say which one is active.
-- **Fit browser:** saved fits grouped by ship group, search, duplicate/delete, JSON backup and restore of the whole library (fits, characters, profiles). Pasting several EFT fits at once imports them all.
+- **Fit library:** saved fits are stored in IndexedDB (falling back to localStorage, then memory; a library kept in localStorage by earlier versions is migrated once, with a copy left under `eve-fit-web:v1:migrated`). Folders (nested, `a/b`) and tags, grouping by folder or ship group, search (name, ship, folder, notes, `tag:<name>`), rename / move / tag (one fit or a selection), duplicate, delete (links from projected and fleet fits are removed), export of a selection or the whole library as one EVE XML file or as EFT, and JSON backup / restore (fits, folders, characters, profiles, implant sets; restoring the same backup twice adds nothing). Pasting several EFT fits at once imports them all.
+- **Pyfa import:** Pyfa's export formats (EFT, DNA, EVE XML, ESI JSON) through the formats layer, and Pyfa's saved-fits database (`saveddata.db`) read in the browser with sql.js (`src/formats/pyfadb.ts`): fits with module states, charges, spool, mutated modules, drones, fighters and abilities, implants, boosters and side effects, cargo, notes, T3D modes, system security, beacons, projected modules/drones/fighters and projected fits, command fits, characters with skills and security status, damage patterns, target profiles, implant sets and attribute overrides. The imported fits give the same numbers as Pyfa (checked in the e2e against stats Pyfa computed for the test database).
 - **Language:** English / 中文 switch for item names (dataset `names_i18n`) and the main UI labels.
-- **Options:** factor in reload, default spool-up, RAH adapt/unadapted. Fits, characters and profiles are stored in localStorage.
+- **Options:** factor in reload, default spool-up, RAH adapt/unadapted. Settings are stored in localStorage; fits, characters and profiles in the fit library (IndexedDB).
 
 ## Engine adapter (`src/engine/adapter.ts`)
 | backend | where it runs | notes |
@@ -99,7 +100,10 @@ cp target/wasm32-unknown-unknown/release-small/{eve_wasm,eve_fit_formats_wasm}.w
 * Unit tests: `npm test` (vitest, `src/**/*.test.ts`, node). They use a committed dataset slice
   (`src/test/fixtures/mini-dataset.json.gz`, rebuilt with `node tools/make-test-dataset.mjs`) and, when present,
   `public/engines/f/eve_fit_formats_wasm.wasm` (CI requires it: `REQUIRE_FORMATS_WASM=1`).
-* End to end: `tools/e2e.mjs` in headless Chrome against a running site.
+* End to end: `tools/e2e.mjs` in headless Chrome against a running site (includes the fit library: Pyfa database import
+  checked against Pyfa's own stats, library operations, backup/restore, DNA import, reload persistence and migration).
+* `src/test/fixtures/pyfa-saveddata.db` is a Pyfa saved-fits database made with Pyfa itself (see
+  [src/test/fixtures/README.md](src/test/fixtures/README.md)); it is data only.
 * Test ids: unit tests are named `web.unit.<slug>: …`, e2e checks `web.e2e.<slug>: …`; [docs/test-ids.md](docs/test-ids.md)
   maps the e2e ids to the names used before.
 * CI (`pages.yml`) gates the deploy on engine F and the formats module building, the unit tests, the e2e on
@@ -109,4 +113,5 @@ cp target/wasm32-unknown-unknown/release-small/{eve_wasm,eve_fit_formats_wasm}.w
 - UI code: MIT.
 - The bundled engines are LGPL-3.0-or-later (F: EX-CT/eve-dogma; D and J: EX-CT/eve-dogma-lab). They are loaded as separate files (`engines/`), with their source on GitHub.
 - EVE Online data © CCP hf., used under CCP's developer licence (`data/LICENSE.EVE`).
-- No Pyfa code is used. Graph formulas come from public EVE mechanics documentation.
+- sql.js (MIT) reads Pyfa databases; it is loaded only when such a file is imported.
+- No Pyfa code is used: the Pyfa database reader follows the table layout of the file, and the test database is data generated by running Pyfa outside this repository. Graph formulas come from public EVE mechanics documentation.
