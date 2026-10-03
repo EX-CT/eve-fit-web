@@ -10,7 +10,7 @@
 # 1.10 stats-ext outputs: mining, outgoing (remote reps / cap transfer), bombing, drones/fighters items[] (EHP),
 # modules[].heat (burnout), the 2da8150 validation codes (capital modules on subcaps, MISSING_SKILL per skill), RPC optimize.
 # Format: <owner/repo>@<full sha>:<directory of the Cargo workspace>.
-ENGINE_F_SRC=EX-CT/eve-dogma@20aa42571a62b378c0d02ef37df28b116babd475:.
+ENGINE_F_SRC=EX-CT/eve-dogma@197223f2837b9f42648b5afedc1a4e6a7feb2d06:.
 # CONTRACT-GRAPHS 0.2 case suite (eve-dogma-bench, branch graphs-round2) run in headless Chrome against wasm-worker (F)
 GRAPHS_BENCH_SHA=8c40921911aed9a7d7f032a2f9d4c43986ca0232
 # Optional speed reference J (round-1 winner; C++20 -> WASM with Emscripten, backend wasm-j-worker; graphs via F). Format: <owner/repo>@<full sha>:<directory>.
@@ -21,4 +21,4 @@ EMSDK_VERSION=6.0.11
 DOGMA_BENCH_SHA=d2edf989a7c3ba5afbe54ca6fe85a5a285af8640
 # Full eve-dogma-bench suite set (branch pending-1.11: core, ext + ext/unit, ext_rpc, batch, effects, graphs, cap, mutated,
 # formats; tools/run_all_suites.sh) run in headless Chrome against F; gate = tools/check_no_regress.py vs baselines/f.json.
-BENCH_SUITES_SHA=c2229b2194b21a8b73a4fd394704203f25d45816
+BENCH_SUITES_SHA=1fd7e37907e968aa76d57a7cf372b8622b935f21
