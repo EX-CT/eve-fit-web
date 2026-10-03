@@ -63,7 +63,7 @@ node tools/engine-bridge.mjs --stdio "eve-dogma --dataset D.json.gz serve-stdio"
 
 The hosted site's default backend comes from `src/engine/defaults.ts` (`ts-worker`). To switch it without a code change,
 set the repository variable `DEFAULT_ENGINE` (for example `gh variable set DEFAULT_ENGINE -b wasm-worker -R EX-CT/eve-fit-web`)
-and re-run the `pages` workflow, or dispatch `pages` with the `default_engine` input. Visitors who never picked a backend
+and re-run the `pages` workflow (`tools/switch-default.sh <backend-id>` does both, waits for the run and checks the live build-info), or dispatch `pages` with the `default_engine` input. Visitors who never picked a backend
 follow the new default; an explicit choice in the backend selector is kept. `?engine=<id>` overrides both. The
 **About** tab shows the active backend, the engine's reported version, the engine D/F/graphs-g4 commits, the dataset and the site build.
 
