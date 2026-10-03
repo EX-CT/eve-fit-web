@@ -376,8 +376,10 @@ const FIX = new URL('../src/test/fixtures/', import.meta.url).pathname;
 const pyfaStats = JSON.parse(fs.readFileSync(FIX + 'pyfa-saveddata.stats.json', 'utf8'));
 const PRECISE = engine !== 'ts-worker'; // variant D (TS) is not held to Pyfa's numbers (web-bench gates F)
 const libFits = () => p.evaluate(() => [...document.querySelectorAll('.lib-fit')].map((l) => ({ id: l.dataset.fitId, name: l.dataset.fitName, folder: l.closest('details')?.dataset.folder ?? null, tags: [...l.querySelectorAll('.tag')].map((x) => x.textContent) })));
+// name, or { id } (names are not unique: the XML re-import below adds a second "Pyfa Vexor")
 const openFit = async (name, ship) => {
-  const id = await p.evaluate((n) => { const el = document.querySelector(`.lib-fit[data-fit-name="${n}"]`); el?.click(); return el?.dataset.fitId; }, name);
+  const sel = typeof name === 'string' ? `.lib-fit[data-fit-name="${name}"]` : `.lib-fit[data-fit-id="${name.id}"]`;
+  const id = await p.evaluate((s) => { const el = document.querySelector(s); el?.click(); return el?.dataset.fitId; }, sel);
   return p.waitForFunction((sh, fid) => window.__lastStatsFit === fid && window.__lastStats?.ship?.name === sh && !window.__lastStats.error && window.__lastStats, { timeout: 60000 }, ship, id).then((h) => h.jsonValue()).catch(() => null);
 };
 await clickText('.left .tabs button', 'Fits');
@@ -388,6 +390,7 @@ const pi = await p.waitForFunction(() => window.__lastLibraryImport, { timeout: 
 await p.select('.lib-mode', 'folder');
 let lf = await libFits();
 const pyfaNames = Object.keys(pyfaStats);
+const pyfaVexorId = lf.find((f) => f.name === 'Pyfa Vexor')?.id;
 check('web.e2e.pyfa-db-import: Pyfa saveddata.db import (sql.js): every fit, character, profiles, implant set, into folder "Pyfa import"',
   pi && pi.kind === 'Pyfa database' && pyfaNames.every((n) => lf.some((f) => f.name === n && f.folder === 'Pyfa import')) && pi.characters === 1 && pi.damagePatterns === 1 && pi.targetProfiles === 1 && pi.implantSets === 1 && pi.warnings.length === 0,
   pi ? `${pi.fits.join(', ')}; warnings ${pi.warnings.length}` : 'no import');
@@ -508,9 +511,9 @@ await clickText('.left .tabs button', 'Fits');
 await p.select('.lib-mode', 'folder');
 const after = (await libFits()).map((f) => `${f.name}|${f.folder}|${f.tags}`).sort();
 const kind = await p.evaluate(() => document.querySelector('.lib-status')?.dataset.kind);
-const vx = await openFit('Pyfa Vexor', 'Vexor');
+const vx = await openFit({ id: pyfaVexorId }, 'Vexor');
 check('web.e2e.library-reload-persistence: fits, folders and tags survive a reload (IndexedDB)', st0.kind === 'indexeddb' && kind === 'indexeddb' && after.length === before.length && after.join('\n') === before.join('\n') && after.some((x) => x.startsWith('Renamed Rifter|PvP/Small|brawler,solo')) && (!PRECISE || Math.abs(vx?.navigation?.max_velocity - pyfaStats['Pyfa Vexor'].max_velocity) < 1e-6),
-  `${kind}: ${before.length} -> ${after.length} fits; ${before.filter((x) => !after.includes(x)).join(' / ')} => ${after.filter((x) => !before.includes(x)).join(' / ')}`);
+  `${kind}: ${before.length} -> ${after.length} fits, Vexor ${vx ? vx.navigation?.max_velocity : "no stats"}; ${before.filter((x) => !after.includes(x)).join(' / ')} => ${after.filter((x) => !before.includes(x)).join(' / ')}`);
 
 // migration: a fresh profile holding only the localStorage library of earlier versions
 {
