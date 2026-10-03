@@ -75,6 +75,8 @@ class WorkerEngine implements Engine {
   calc(request: unknown) { return this.call({ op: 'calc', request }); }
   graph(request: GraphRequest): Promise<GraphResult> { return this.call({ op: 'rpc', method: 'graph', params: request }); }
   async graphSpecs() { try { return asSpecs(await this.call({ op: 'rpc', method: 'graph_specs', params: {} })); } catch { return null; } }
+  /** Any engine RPC method, full response ({id, result} | {id, error}); used by tools/browser-rpc.mjs (bench batch, prices). */
+  rpcRaw(method: string, params: unknown): Promise<any> { return this.call({ op: 'rpc_raw', method, params }); }
   dispose() { this.w?.terminate(); this.w = null; }
 }
 
