@@ -152,22 +152,27 @@ jobs:
           if [ -f public/engines/j/evej.wasm ]; then python3 tools/browser-dogma-bench.py benchstats http://127.0.0.1:4175/eve-fit-web/ wasm-j-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "J browser bench failed (optional engine)" >> "$GITHUB_STEP_SUMMARY"; fi
         shell: bash -eo pipefail {0}
         env: { CHROME: /usr/bin/google-chrome }
-      - name: Bench ext (stats-ext 1.10/1.11) and effects suites in the browser build (wasm-worker = F gates the deploy; eve-dogma-bench @ engines.lock EXT_BENCH_SHA)
-        # suites web-ext (ext/cases + ext/unit: mining, outgoing reps, bombing, drone/fighter EHP, heat, fleet buffs, overrides,
-        # probe size, validity, vs target profile) and web-effects (effects/ micro-fits, at least EFFECTS_MIN), scored by the
-        # bench's own score.py; the batch command is the site's engine adapter in headless Chrome (tools/browser-rpc.mjs)
+      - name: Bench pending-1.11 full suite set in the browser build (wasm-worker = F; tools/run_all_suites.sh + check_no_regress.py vs baselines/f.json gate the deploy; eve-dogma-bench @ engines.lock BENCH_SUITES_SHA)
+        # core, ext (+ unit), ext_rpc, batch, effects, graphs, cap, mutated, formats: every suite of the bench's run_all_suites.sh,
+        # with tools/browser-engine.mjs as the engine binary (one headless Chrome via browser-rpc --http), scored by the bench's
+        # own runners; check_no_regress.py fails on any case that passes in baselines/f.json but not here
         run: |
-          git init -q benchext && git -C benchext fetch -q --depth 1 https://github.com/EX-CT/eve-dogma-bench "$EXT_BENCH_SHA" && git -C benchext checkout -q FETCH_HEAD
-          npx vite preview --host 127.0.0.1 --port 4176 --strictPort &
-          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:4176/eve-fit-web/ && break; sleep 1; done
-          cmd="node $GITHUB_WORKSPACE/tools/browser-rpc.mjs http://127.0.0.1:4176/eve-fit-web/ wasm-worker --batch"
-          (cd benchext && python3 ext/tools/score.py --batch-cmd "$cmd" --name browser-wasm-worker) | tee "$RUNNER_TEMP/ext.txt" | tee -a "$GITHUB_STEP_SUMMARY"
-          grep -qE 'ext suite ([0-9]+)/\1 pass' "$RUNNER_TEMP/ext.txt" || { echo "web-ext: not every case passes" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; }
-          (cd benchext && python3 effects/tools/score.py --batch-cmd "$cmd" --name browser-wasm-worker) | tee "$RUNNER_TEMP/effects.txt" | tee -a "$GITHUB_STEP_SUMMARY"
-          n=$(sed -nE 's/.*effect suite ([0-9]+)\/[0-9]+ pass.*/\1/p' "$RUNNER_TEMP/effects.txt")
-          test "${n:-0}" -ge "$EFFECTS_MIN" || { echo "web-effects: $n < EFFECTS_MIN $EFFECTS_MIN" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; }
+          git clone -q --filter=blob:none https://github.com/EX-CT/eve-dogma-bench benchsuites && git -C benchsuites checkout -q "$BENCH_SUITES_SHA"
+          npx vite preview --host 127.0.0.1 --port 4177 --strictPort &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:4177/eve-fit-web/ && break; sleep 1; done
+          node tools/browser-rpc.mjs http://127.0.0.1:4177/eve-fit-web/ wasm-worker --http 8899 &
+          for i in $(seq 1 60); do curl -s -o /dev/null -X POST --data '' http://127.0.0.1:8899/rpc && break; sleep 1; done
+          out="$RUNNER_TEMP/bench-suites-wasm-worker"
+          BROWSER_RPC=http://127.0.0.1:8899 bash benchsuites/tools/run_all_suites.sh "$GITHUB_WORKSPACE/tools/browser-engine.mjs" "$out" browser-wasm-worker
+          rm -rf "$out/suites"
+          echo '### Bench pending-1.11 suites in the browser (wasm-worker = F)' >> "$GITHUB_STEP_SUMMARY"
+          python3 benchsuites/tools/check_no_regress.py --baseline benchsuites/baselines/f.json --run-dir "$out" 2>&1 | tee "$out/no-regress.txt" | tee -a "$GITHUB_STEP_SUMMARY"
         shell: bash -eo pipefail {0}
         env: { CHROME: /usr/bin/google-chrome }
+      - name: Upload bench suite results (per suite)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: bench-suites-wasm-worker, path: "${{ runner.temp }}/bench-suites-wasm-worker", if-no-files-found: warn }
       - uses: actions/upload-pages-artifact@v3
         with: { path: dist }
   deploy:

@@ -19,9 +19,6 @@ ENGINE_J_SRC=EX-CT/eve-dogma-lab@3ab992d7ed451436725e0597e19307c11863ab40:varian
 EMSDK_VERSION=6.0.11
 # Stats corpus run in headless Chrome against F (gates the deploy) and J (optional): bench 1.9.0 (331 cases, tag v1.9.0)
 DOGMA_BENCH_SHA=d2edf989a7c3ba5afbe54ca6fe85a5a285af8640
-# Bench ext suite (stats-ext 1.10 + 1.11 drafts: mining, outgoing, bombing, drone/fighter EHP, heat, fleet.buffs, overrides,
-# probe_size, validity, vs_target_profile; 202 cases) and effects/ micro-fits (2378) run in headless Chrome against F
-# (suites web-ext / web-effects; eve-dogma-bench branch pending-1.11, results-1.11 1a8be05: F 2da8150 ext 202/202).
-# ext must pass every case; effects must reach EFFECTS_MIN (F 20aa425: 2353/2378).
-EXT_BENCH_SHA=1a8be053df601b3f0ff6b4860d4fb3002ba5b8de
-EFFECTS_MIN=2353
+# Full eve-dogma-bench suite set (branch pending-1.11: core, ext + ext/unit, ext_rpc, batch, effects, graphs, cap, mutated,
+# formats; tools/run_all_suites.sh) run in headless Chrome against F; gate = tools/check_no_regress.py vs baselines/f.json.
+BENCH_SUITES_SHA=c2229b2194b21a8b73a4fd394704203f25d45816

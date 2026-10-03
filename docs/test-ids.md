@@ -151,8 +151,7 @@ Not single checks but bench corpora scored by the bench's own tools; each gates 
 |---|---|---|
 | `web-bench` | eve-dogma-bench cases/ (1.9.0, 331 cases), `tools/browser-dogma-bench.py` | `DOGMA_BENCH_SHA` |
 | `web-graphs` | graphs 0.2 case suite (178 cases) | `GRAPHS_BENCH_SHA` |
-| `web-ext` | ext/cases + ext/unit (202: mining, outgoing, bombing, drone/fighter EHP, heat, fleet.buffs, overrides, probe_size, validity, vs_target_profile), `ext/tools/score.py`, every case | `EXT_BENCH_SHA` |
-| `web-effects` | effects/ micro-fits (2378), `effects/tools/score.py`, at least `EFFECTS_MIN` (2353) | `EXT_BENCH_SHA` |
+| `web-suites` | every suite of eve-dogma-bench pending-1.11 `tools/run_all_suites.sh` (core, ext + ext/unit incl. tp_/probe_/val_, ext_rpc, batch, effects, graphs, cap, mutated, formats) with `tools/browser-engine.mjs` as the engine; gate `tools/check_no_regress.py` vs `baselines/f.json`; per-suite results uploaded as artifact `bench-suites-wasm-worker` | `BENCH_SUITES_SHA` |
 
 ## Ids from the eve3 gap list
 
