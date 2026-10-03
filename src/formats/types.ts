@@ -10,6 +10,8 @@ export interface StructuredMutation { base_type_id: number; mutaplasmid_type_id:
 export interface StructuredModule {
   /** fitted type: for a mutated module the mutaplasmid's output (abyssal) type, with `mutation` naming the base */
   type_id: number; slot: Slot; state: ModState; charge_type_id: number | null; mutation?: StructuredMutation | null;
+  /** spool-up as a fraction of max (0..1), null/absent = the fit's default */
+  spool?: number | null;
 }
 /** A fit as structured JSON. Field names follow the engine contract FitRequest (eve-fit-docs 05-api-schema) where
  *  the two overlap (ship, modules, drones, fighters, implants, boosters, cargo); name / notes are library metadata. */
@@ -55,4 +57,32 @@ export function shipstatsRequest(req: Record<string, any>): Record<string, unkno
     options: { ...(req.options ?? {}), include_attributes: 'all', default_spool: { type: 'spool_scale', amount: 0 } },
     modules: (req.modules ?? []).map((m: Record<string, unknown>) => ({ ...m, spool: null })),
   };
+}
+
+// ---- libraries (several fits with their profiles, characters and links), e.g. a Pyfa saved-fits database ----
+
+/** A projected module / drone / fighter in a library fit (the engine contract's projected entries, flattened). */
+export interface StructuredProjected {
+  kind: 'module' | 'drone' | 'fighter'; type_id: number; amount: number; distance_m: number | null;
+  state?: ModState; charge_type_id?: number | null; quantity?: number; active?: boolean;
+}
+/** A fit of a library: a StructuredFit plus references (`ref`, local to the library) to its character, profiles and
+ *  linked fits (projected fits, fleet booster fits), and library metadata. */
+export interface StructuredLibraryFit extends StructuredFit {
+  ref: string;
+  character_ref?: string | null; damage_pattern_ref?: string | null; target_profile_ref?: string | null;
+  system_security?: 'hisec' | 'lowsec' | 'nullsec' | 'wspace' | null;
+  environment?: number[]; projected?: StructuredProjected[];
+  projected_fits?: { ref: string; amount: number; distance_m: number | null }[]; booster_fit_refs?: string[];
+  /** base attribute values for every item of a type in the fit */
+  overrides?: { type_id: number; attribute_id: number; value: number }[];
+  folder?: string | null; tags?: string[]; created?: string | null; modified?: string | null;
+}
+export interface StructuredCharacter { ref: string; name: string; default_level: number; levels: Record<string, number>; security_status?: number | null; builtin?: 'all5' | 'all4' | 'all0' }
+export interface StructuredProfile { ref: string; name: string; em: number; thermal: number; kinetic: number; explosive: number;
+  signature_radius?: number | null; max_velocity?: number | null; radius?: number | null }
+export interface StructuredLibrary {
+  kind: string; fits: StructuredLibraryFit[]; characters: StructuredCharacter[];
+  damage_patterns: StructuredProfile[]; target_profiles: StructuredProfile[]; implant_sets: { ref: string; name: string; implants: number[] }[];
+  warnings: string[];
 }

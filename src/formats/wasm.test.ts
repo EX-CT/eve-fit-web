@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { formatsWasmBytes, hasFormatsWasm, id, miniDataset, requireFormatsWasm } from '../test/fixture';
 import { newFit, toRequest, type Library } from '../fit/model';
 import { BUILTIN_CHARACTERS } from '../data/presets';
-import { exportFit, fitFromStructured, formats, formatsStatus, importFits, initFormats } from './index';
+import { exportFit, exportFits, fitFromStructured, formats, formatsStatus, importFits, initFormats } from './index';
 import { shipstatsRequest } from './types';
 
 const ds = miniDataset();
@@ -52,6 +52,14 @@ describe.skipIf(!hasFormatsWasm && !requireFormatsWasm)('formats/eve-fit-formats
   it('web.unit.formats-wasm-multi-eft: several pasted EFT fits import as several fits', () => {
     const r = importFits(ds, '[Rifter, Multi A]\n200mm AutoCannon II\n\n[Merlin, Multi B]\nLight Neutron Blaster II\n');
     expect(r.fits.map((f) => [ds.name(f.ship_type_id, 'en'), f.name])).toEqual([['Rifter', 'Multi A'], ['Merlin', 'Multi B']]);
+  });
+  it('web.unit.formats-wasm-multi-export: several fits as one EVE XML document and as multi-fit EFT, both re-import as every fit', () => {
+    const fits = importFits(ds, '[Rifter, Multi A]\n200mm AutoCannon II\n\n[Merlin, Multi B]\nLight Neutron Blaster II\n').fits;
+    const xml = exportFits(ds, fits, lib, 'xml');
+    expect(xml.startsWith('<?xml version="1.0" ?>\n<fittings count="2">\n')).toBe(true);
+    expect(importFits(ds, xml, 'auto', 'all.xml').fits.map((f) => f.name)).toEqual(['Multi A', 'Multi B']);
+    const eft = exportFits(ds, fits, lib, 'eft');
+    expect(importFits(ds, eft).fits.map((f) => [ds.name(f.ship_type_id, 'en'), f.name])).toEqual([['Rifter', 'Multi A'], ['Merlin', 'Multi B']]);
   });
   it('web.unit.formats-wasm-xml-roundtrip: EVE XML export and re-import keep the mutated module', () => {
     const f = importFits(ds, VEXOR).fits[0];

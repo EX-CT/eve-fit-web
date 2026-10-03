@@ -16,6 +16,8 @@ const NAMES = [
   'Hammerhead II', 'Hobgoblin II', "Inherent Implants 'Noble' Repair Proficiency RP-905", 'Improved Crash Booster',
   'Unstable Stasis Webifier Mutaplasmid', 'Light Neutron Blaster II', 'Fighter Support Unit II', 'Einherji II', 'Firbolg II',
   'Nanite Repair Paste', '5MN Microwarpdrive II', 'Small Ancillary Armor Repairer', 'Burst Jammer II', 'Gunnery', 'Small Projectile Turret',
+  // Pyfa saved-fits database fixture (src/test/fixtures/pyfa-saveddata.db)
+  'Svipul Defense Mode', 'Warrior II', 'Drones', 'Drone Navigation', "Zainou 'Snapshot' Heavy Missiles HM-703",
 ];
 const byName = new Map(Object.entries(d.types).map(([k, t]) => [t.name, k]));
 const keep = new Set();

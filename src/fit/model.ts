@@ -24,6 +24,8 @@ export interface Fit {
   notes?: string;
   /** Pyfa-style attribute overrides: base value of an attribute for every item of a type in this fit */
   overrides?: { type_id: number; attribute_id: number; value: number }[];
+  /** fit library: folder path ("PvP/Frigates", "" or absent = top level), free tags, timestamps (ISO) */
+  folder?: string; tags?: string[]; created?: string; modified?: string;
 }
 export interface Character { id: string; name: string; default_level: number; levels: Record<string, number>; security_status?: number | null; builtin?: boolean }
 export interface DamagePattern { id: string; name: string; em: number; thermal: number; kinetic: number; explosive: number; builtin?: boolean }
@@ -44,6 +46,8 @@ export function newFit(ship: number, name = 'New fit'): Fit {
 export interface Library {
   fits: Record<string, Fit>; characters: Record<string, Character>;
   damagePatterns: Record<string, DamagePattern>; targetProfiles: Record<string, TargetProfile>;
+  /** folder paths of the fit library, kept even when empty */
+  folders?: string[];
 }
 
 function moduleReq(m: FitModule) {
