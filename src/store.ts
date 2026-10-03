@@ -20,6 +20,7 @@ export function defaultEngineConfig(): EngineConfig {
     datasetUrl: new URL(`${base}data/dataset.json.gz`, location.href).href,
     engineUrl: new URL(`${base}engines/d/eve-dogma-ts.mjs`, location.href).href,
     wasmUrl: new URL(`${base}engines/f/eve_dogma_f.wasm`, location.href).href,
+    g4WasmUrl: new URL(`${base}engines/g4/eve_dogma_f.wasm`, location.href).href,
   };
 }
 

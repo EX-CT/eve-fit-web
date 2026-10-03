@@ -35,7 +35,7 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
   - navigation, targeting (lock times, jam chance), drones
   - violations and engine warnings
 - **Price:** fit value (ship, fittings incl. loaded charges and mutaplasmids, drones/fighters, implants/boosters, cargo) from the public ESI market prices endpoint. Opt-in button, cached for 6 h.
-- **Graphs:** DPS vs range (turret hit chance, missile application, drones), capacitor vs time, regen vs fill %, speed and distance vs time, lock time vs signature, warp time vs distance.
+- **Graphs:** DPS vs range (turret hit chance, missile application, drones), capacitor vs time, regen vs fill %, speed and distance vs time, lock time vs signature, warp time vs distance. On a backend with the graph RPC (CONTRACT-GRAPHS rev 0.2: `graph_specs` / `graph`, currently `wasm-g4-worker`) the engine computes these graphs, and the application profile (best ammo), EWAR and remote-repair graphs are added. On other backends, or if an engine graph call fails, the UI computes approximations from one stats result. A label next to the graph says which kind you are looking at.
 - **Import and export:** EFT text (including Pyfa-style mutated module blocks `[N] Base` / mutaplasmid / attribute values), DNA, ESI fitting JSON (import and export), multibuy list (export), and share links (`?dna=`, `?eft=`).
 - **Fit browser:** saved fits grouped by ship group, search, duplicate/delete, JSON backup and restore of the whole library (fits, characters, profiles). Pasting several EFT fits at once imports them all.
 - **Language:** English / 中文 switch for item names (dataset `names_i18n`) and the main UI labels.
@@ -46,10 +46,11 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
 |---|---|---|
 | `ts-worker` | browser (Web Worker) | variant D TypeScript bundle, built in CI from `EX-CT/eve-dogma-lab@variant-d`. It loads the same release dataset |
 | `wasm-worker` | browser (Web Worker) | variant F Rust→WASM (C-ABI `calc`), built in CI with the release dataset compiled in |
-| `http` | any engine server | `POST {url}/v1/calc`, `GET {url}/v1/meta`; e.g. variant C `serve-http`, through `tools/engine-bridge.mjs` for CORS |
+| `wasm-g4-worker` | browser (Web Worker) | **round-2 prototype**: eve-dogma-lab `graphs-g4` (variant F plus a graph layer, 178/178 on CONTRACT-GRAPHS 0.2), WASM `calc` + `rpc` (`graph`, `graph_specs`). Built in CI next to F. The final graph engine waits for the round-2 winner |
+| `http` | any engine server | `POST {url}/v1/calc`, `GET {url}/v1/meta` (graph RPC: `POST {url}/v1/graph`, `GET {url}/v1/graph_specs`); e.g. variant C `serve-http`, through `tools/engine-bridge.mjs` for CORS |
 
-Pick a backend in the header, or with `?engine=ts-worker|wasm-worker|http&http=http://127.0.0.1:8787`.
-Adding another engine means writing one class that implements `Engine` (`init`, `calc`). The UI code does not change.
+Pick a backend in the header, or with `?engine=ts-worker|wasm-worker|wasm-g4-worker|http&http=http://127.0.0.1:8787`.
+Adding another engine means writing one class that implements `Engine` (`init`, `calc`, and optionally `graph` / `graphSpecs`). The UI code does not change.
 
 Local HTTP engine for the hosted site:
 ```bash
@@ -64,7 +65,7 @@ The hosted site's default backend comes from `src/engine/defaults.ts` (`ts-worke
 set the repository variable `DEFAULT_ENGINE` (for example `gh variable set DEFAULT_ENGINE -b wasm-worker -R EX-CT/eve-fit-web`)
 and re-run the `pages` workflow, or dispatch `pages` with the `default_engine` input. Visitors who never picked a backend
 follow the new default; an explicit choice in the backend selector is kept. `?engine=<id>` overrides both. The
-**About** tab shows the active backend, the engine's reported version, the engine D/F commits, the dataset and the site build.
+**About** tab shows the active backend, the engine's reported version, the engine D/F/graphs-g4 commits, the dataset and the site build.
 
 ## Development
 ```bash
@@ -81,7 +82,7 @@ node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-
 `.github/workflows/pages.yml` runs on push, by hand, and every 6 h:
 1. Download the latest `eve-sde-pipeline` release dataset.
 2. Build engine D and engine F (WASM).
-3. Build the site and run a headless Chrome smoke test (the demo fit must compute), then the UI end-to-end test (`tools/e2e.mjs`: EFT import, projected web, beacon, graphs, booster side effect, fleet buff, EFT/DNA export, custom character, fighter abilities) on the TS and WASM backends.
+3. Build the site and run a headless Chrome smoke test (the demo fit must compute), then the UI end-to-end test (`tools/e2e.mjs`: EFT import, projected web, beacon, graphs, booster side effect, fleet buff, EFT/DNA export, custom character, fighter abilities) on the TS and WASM backends, and on `wasm-g4-worker`. That run checks that every graph is engine-computed, including a lock-time value against the formula.
 4. Deploy to GitHub Pages.
 
 ## Licence

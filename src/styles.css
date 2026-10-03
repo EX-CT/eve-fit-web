@@ -76,3 +76,5 @@ label.button { display: inline-block; padding: 3px 8px; border: 1px solid #3a465
 .attrs tr.overridden td:first-child::after { content: ' ✎'; color: #e0b050; }
 .implantsets { display: flex; gap: 6px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
 .sdetoggle { display: block; margin: 4px 0 6px; }
+.graph-src { margin-left: auto; font-size: 12px; padding: 1px 6px; border-radius: 3px; border: 1px solid var(--mut); color: var(--mut); }
+.graph-src.engine { color: #3c9; border-color: #3c9; }

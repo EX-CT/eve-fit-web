@@ -10,14 +10,31 @@ export interface Engine {
   /** resolves when the engine can calculate; returns a human-readable description (engine name, dataset) */
   init(): Promise<string>;
   calc(request: unknown): Promise<FitStats>;
+  /** Optional graph RPC (CONTRACT-GRAPHS rev 0.2, eve-dogma-bench `graphs-round2`). Engines without it leave these
+   *  undefined or resolve graphSpecs() to null; the UI then falls back to its own approximation graphs. */
+  graph?(request: GraphRequest): Promise<GraphResult>;
+  graphSpecs?(): Promise<GraphSpecs | null>;
   dispose(): void;
 }
 
-export interface EngineConfig { backend: string; httpUrl: string; datasetUrl: string; engineUrl: string; wasmUrl: string }
+/** GraphRequest per CONTRACT-GRAPHS 0.2: {schema_version, graph, fit, target?, x:{axis, values}, y:[...], params?, settings?} */
+export interface GraphRequest {
+  schema_version: 1; graph: string; fit: unknown; target?: unknown;
+  x: { axis: string; values: number[] }; y: string[]; params?: Record<string, unknown>; settings?: Record<string, unknown>;
+}
+/** GraphResult (null = invalid point) or a contract error {error:{code,message,path}}. */
+export interface GraphResult { graph?: string; x_axis?: string; x?: number[]; series?: Record<string, (number | null)[]>; meta?: unknown; error?: { code: string; message: string; path?: string } }
+/** graph_specs catalogue: graphs[name].axes / .series (other fields engine-specific). */
+export interface GraphSpecs { contract?: string; graphs: Record<string, { axes?: Record<string, unknown>; series?: Record<string, unknown>; title?: string }> }
+
+const asSpecs = (r: any): GraphSpecs | null => (r && !r.error && r.graphs && typeof r.graphs === 'object' ? r : null);
+
+export interface EngineConfig { backend: string; httpUrl: string; datasetUrl: string; engineUrl: string; wasmUrl: string; g4WasmUrl?: string }
 
 export const BACKENDS: EngineInfo[] = [
   { id: 'ts-worker', label: 'In-browser: TypeScript engine (variant D) in a Web Worker' },
   { id: 'wasm-worker', label: 'In-browser: Rust→WASM engine (variant F, data compiled in) in a Web Worker' },
+  { id: 'wasm-g4-worker', label: 'In-browser: variant F + graph RPC (graphs-g4, round-2 prototype) in a Web Worker' },
   { id: 'http', label: 'Local/remote HTTP engine (POST {url}/v1/calc, e.g. variant C serve-http)' },
 ];
 
@@ -47,6 +64,8 @@ class WorkerEngine implements Engine {
     return this.call({ op: 'init', ...this.initMsg });
   }
   calc(request: unknown) { return this.call({ op: 'calc', request }); }
+  graph(request: GraphRequest): Promise<GraphResult> { return this.call({ op: 'rpc', method: 'graph', params: request }); }
+  async graphSpecs() { try { return asSpecs(await this.call({ op: 'rpc', method: 'graph_specs', params: {} })); } catch { return null; } }
   dispose() { this.w?.terminate(); this.w = null; }
 }
 
@@ -68,6 +87,14 @@ class HttpEngine implements Engine {
     const body = await r.json().catch(() => ({ error: { code: 'BAD_RESPONSE', message: `HTTP ${r.status}` } }));
     return body;
   }
+  /** Bridge routes POST /v1/graph and GET /v1/graph_specs (tools/engine-bridge.mjs, engines with the graph RPC). */
+  async graph(request: GraphRequest): Promise<GraphResult> {
+    const r = await fetch(`${this.base}/v1/graph`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request) });
+    return r.json().catch(() => ({ error: { code: 'BAD_RESPONSE', message: `HTTP ${r.status}` } }));
+  }
+  async graphSpecs() {
+    try { const r = await fetch(`${this.base}/v1/graph_specs`); return r.ok ? asSpecs(await r.json()) : null; } catch { return null; }
+  }
   dispose() {}
 }
 
@@ -76,6 +103,7 @@ export function createEngine(cfg: EngineConfig): Engine {
   switch (info.id) {
     case 'http': return new HttpEngine(info, cfg.httpUrl);
     case 'wasm-worker': return new WorkerEngine(info, { kind: 'wasm', wasmUrl: cfg.wasmUrl });
+    case 'wasm-g4-worker': return new WorkerEngine(info, { kind: 'wasm', wasmUrl: cfg.g4WasmUrl ?? cfg.wasmUrl.replace('/engines/f/', '/engines/g4/') });
     default: return new WorkerEngine(info, { kind: 'ts', engineUrl: cfg.engineUrl, datasetUrl: cfg.datasetUrl });
   }
 }

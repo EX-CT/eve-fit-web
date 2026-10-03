@@ -37,6 +37,8 @@ http.createServer(async (req, res) => {
     if (rpc) {
       let out;
       if (url.pathname === '/v1/calc' && req.method === 'POST') { const m = await rpc('calc', JSON.parse((await body(req)).toString())); out = m.result ?? m.error; }
+      else if (url.pathname === '/v1/graph' && req.method === 'POST') { const m = await rpc('graph', JSON.parse((await body(req)).toString())); out = m.result ?? m.error; }
+      else if (url.pathname === '/v1/graph_specs') { const m = await rpc('graph_specs', {}); out = m.result ?? m.error; }
       else if (url.pathname === '/v1/meta') { const m = await rpc('meta', {}); out = m.result ?? m.error; }
       else if (url.pathname === '/healthz') out = { ok: true };
       else { res.writeHead(404, cors); res.end(); return; }

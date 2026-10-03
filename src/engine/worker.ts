@@ -1,15 +1,19 @@
 // Web Worker hosting an in-browser engine so calculations never block the UI.
 //  kind 'ts':   variant D bundle (ES module exporting loadDatasetUrl + calc), dataset fetched from datasetUrl.
-//  kind 'wasm': variant F wasm32-unknown-unknown module with C-ABI exports alloc/dealloc/calc (data compiled in).
+//  kind 'wasm': variant F wasm32-unknown-unknown module with C-ABI exports alloc/dealloc/calc (data compiled in);
+//               an `rpc` export (graphs-g4: methods graph / graph_specs) is used for engine-computed graphs.
 /// <reference lib="webworker" />
 
 type CalcFn = (req: unknown) => unknown;
 let calcFn: CalcFn | null = null;
+/** JSONL-style RPC ({id, method, params} -> {id, result}) when the module exports `rpc` (graph-capable builds). */
+let rpcFn: ((method: string, params: unknown) => unknown) | null = null;
 
 async function initTs(engineUrl: string, datasetUrl: string): Promise<string> {
   const mod: any = await import(/* @vite-ignore */ engineUrl);
   const ds = await mod.loadDatasetUrl(datasetUrl);
   calcFn = (req) => mod.calc(ds, req);
+  rpcFn = typeof mod.rpc === 'function' ? (method, params) => mod.rpc(ds, method, params) : null;
   const m = mod.meta ? mod.meta(ds) : {};
   return `${m.engine ?? mod.ENGINE ?? 'eve-dogma-ts'} · SDE ${m.sde_build ?? '?'}`;
 }
@@ -33,6 +37,10 @@ async function initWasm(wasmUrl: string): Promise<string> {
     return out;
   };
   calcFn = (req) => JSON.parse(call('calc', JSON.stringify(req)));
+  rpcFn = typeof x.rpc === 'function' ? (method, params) => {
+    const resp = JSON.parse(call('rpc', JSON.stringify({ id: 1, method, params })));
+    return resp.result ?? resp.error ?? null;
+  } : null;
   let label = 'eve-dogma-f (wasm)';
   try { const probe: any = calcFn({ schema_version: 1, ship: { type_id: 587 } }); if (probe?.meta?.engine) label = `${probe.meta.engine} (wasm) · SDE ${probe.meta.sde_build}`; } catch { /* ignore */ }
   return label;
@@ -44,6 +52,9 @@ self.onmessage = async (ev: MessageEvent) => {
     if (op === 'init') {
       const r = ev.data.kind === 'wasm' ? await initWasm(ev.data.wasmUrl) : await initTs(ev.data.engineUrl, ev.data.datasetUrl);
       (self as any).postMessage({ id, result: r });
+    } else if (op === 'rpc') {
+      if (!rpcFn) throw new Error('engine has no rpc export');
+      (self as any).postMessage({ id, result: rpcFn(ev.data.method, ev.data.params) });
     } else if (op === 'calc') {
       if (!calcFn) throw new Error('engine not initialised');
       (self as any).postMessage({ id, result: calcFn(ev.data.request) });

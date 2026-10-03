@@ -245,7 +245,7 @@ export default function App() {
           <Tabs tabs={[['fit', t('Fit')], ['graphs', t('Graphs')]]} value={center} onChange={setCenter} />
           {!fit ? <p className="muted">{t('No fit selected.')}</p> : center === 'fit'
             ? <Fitting ds={ds} fit={fit} lib={lib} stats={stats} onChange={setFit} onInfo={setInfo} addProjected={addProjected} setAddProjected={setAddProjected} />
-            : <Graphs ds={ds} st={stats} target={lib.targetProfiles[fit.target_profile_id]} />}
+            : <Graphs ds={ds} st={stats} target={lib.targetProfiles[fit.target_profile_id]} engine={engineReady ? engineRef.current : null} request={request} engineReady={engineReady} />}
         </section>
         <aside className="right"><Stats st={stats} busy={busy} ms={ms} error={calcErr} ds={ds} fit={fit} /><PriceBox ds={ds} fit={fit} /></aside>
       </main>

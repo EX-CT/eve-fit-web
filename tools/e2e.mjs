@@ -92,10 +92,26 @@ check('environment beacon applied', s.meta && (await p.evaluate(() => document.b
 
 // graphs
 await clickText('.center .tabs button', 'Graphs');
-for (const g of ['dps', 'cap', 'regen', 'mobility', 'lock', 'warp']) {
+// Backends with the graph RPC (CONTRACT-GRAPHS 0.2) must render engine-computed series; the others the UI approximation.
+const GRAPH_RPC = ['wasm-g4-worker'].includes(engine) || process.env.E2E_GRAPH_RPC === '1';
+const kinds = ['dps', 'cap', 'regen', 'mobility', 'lock', 'warp', ...(GRAPH_RPC ? ['app', 'ewar', 'rr'] : [])];
+if (GRAPH_RPC) await p.waitForFunction(() => document.querySelector('.graphs select option[value="app"]'), { timeout: 30000 }).catch(() => {});
+const offered = await p.evaluate(() => [...document.querySelectorAll('.graphs select option')].map((o) => o.value));
+check(GRAPH_RPC ? 'graphs: engine-only graphs offered' : 'graphs: approximation set only', GRAPH_RPC ? ['app', 'ewar', 'rr'].every((x) => offered.includes(x)) : !offered.includes('app'), offered.join(','));
+for (const g of kinds) {
   await p.select('.graphs select', g);
+  const want = GRAPH_RPC ? 'engine' : 'approx';
+  const src = await p.waitForFunction((w) => { const e = document.querySelector('.graph-src'); return e && e.dataset.src === w && e.dataset.src; }, { timeout: 30000 }, want).then((h) => h.jsonValue(), () => p.evaluate(() => document.querySelector('.graph-src')?.dataset.src + ' ' + (document.querySelector('.graph-src')?.title ?? '')));
   const n = await p.evaluate(() => document.querySelectorAll('svg.chart polyline').length);
-  check(`graph ${g}`, n > 0, n);
+  const lg = await p.evaluate(() => window.__lastGraph);
+  check(`graph ${g} (${want})`, n > 0 && src === want && (!GRAPH_RPC || lg?.kind === g), `${n} lines, ${src}${lg?.series ? ', ' + lg.series.map((x) => `${x.name}:${x.n}`).join(' ') : ''}`);
+  if (GRAPH_RPC && g === 'lock') {
+    // lock time = min(40000 / scanRes / asinh(sig)^2, 1800) at sig 10 m, from the stats of the same engine
+    const sr = s.targeting?.scan_resolution, want10 = Math.min(40000 / sr / Math.asinh(10) ** 2, 1800), got = lg?.series?.[0]?.first;
+    check('engine lock-time graph matches stats', got && Math.abs(got[1] - want10) <= 1e-6 * want10, `${got?.[1]} vs ${want10}`);
+  }
+  if (GRAPH_RPC && g === 'ewar') check('engine ewar graph has web + neut', ['web_pct', 'neut_gj_s'].every((y) => lg?.series?.some((x) => x.name === y)), lg?.series?.map((x) => x.name).join(','));
+  if (GRAPH_RPC && g === 'cap') check('engine capacitor graph within capacity', lg?.series?.[0]?.first?.[1] > 0 && lg.series[0].first[1] <= s.capacitor?.capacity * (1 + 1e-9), `t=0 ${lg?.series?.[0]?.first?.[1]} (after first activations, capsim) of ${s.capacitor?.capacity} GJ`);
 }
 
 // booster side effect toggle (armor HP penalty)

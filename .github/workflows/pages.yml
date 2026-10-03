@@ -66,11 +66,21 @@ jobs:
           mkdir -p public/engines/f
           cp lab-f/variant-f/target/wasm32-unknown-unknown/release-small/eve_dogma_f.wasm public/engines/f/
           echo "ENGINE_F=$(git -C lab-f rev-parse --short HEAD)" >> "$GITHUB_ENV"
+      - name: Engine F + graph RPC (graphs-g4, round-2 prototype; Rust -> WASM)
+        continue-on-error: true
+        run: |
+          git clone -q --depth 1 -b graphs-g4 https://github.com/EX-CT/eve-dogma-lab lab-g4
+          rustup target add wasm32-unknown-unknown
+          (cd lab-g4/graphs-g4 && EVE_DOGMA_DATASET="$GITHUB_WORKSPACE/public/data/dataset.json.gz" cargo build --lib --profile release-small --target wasm32-unknown-unknown)
+          mkdir -p public/engines/g4
+          cp lab-g4/graphs-g4/target/wasm32-unknown-unknown/release-small/eve_dogma_f.wasm public/engines/g4/
+          cp lab-g4/graphs-g4/LICENSE public/engines/g4/LICENSE 2>/dev/null || true
+          echo "ENGINE_G4=$(git -C lab-g4 rev-parse --short HEAD)" >> "$GITHUB_ENV"
       - name: Build info
         run: |
           echo "VITE_DEFAULT_ENGINE=$DEFAULT_ENGINE" >> "$GITHUB_ENV"
-          printf '{"dataset_tag":"%s","engine_d":"%s","engine_f":"%s","web":"%s","built_at":"%s","default_engine":"%s","run":"%s"}\n' \
-            "$DATASET_TAG" "${ENGINE_D:-}" "${ENGINE_F:-}" "${GITHUB_SHA::7}" "$(date -u +%FT%TZ)" "$DEFAULT_ENGINE" \
+          printf '{"dataset_tag":"%s","engine_d":"%s","engine_f":"%s","engine_g4":"%s","web":"%s","built_at":"%s","default_engine":"%s","run":"%s"}\n' \
+            "$DATASET_TAG" "${ENGINE_D:-}" "${ENGINE_F:-}" "${ENGINE_G4:-}" "${GITHUB_SHA::7}" "$(date -u +%FT%TZ)" "$DEFAULT_ENGINE" \
             "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > public/build-info.json
           cat public/build-info.json
       - run: npm run build
@@ -83,6 +93,7 @@ jobs:
           if [ -f public/engines/f/eve_dogma_f.wasm ]; then node tools/smoke.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "wasm backend smoke failed" >> "$GITHUB_STEP_SUMMARY"; fi
           node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ ts-worker | tee -a "$GITHUB_STEP_SUMMARY"
           if [ -f public/engines/f/eve_dogma_f.wasm ]; then node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "wasm backend e2e failed" >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f public/engines/g4/eve_dogma_f.wasm ]; then node tools/e2e.mjs http://127.0.0.1:4173/eve-fit-web/ wasm-g4-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "graphs-g4 backend e2e failed" >> "$GITHUB_STEP_SUMMARY"; fi
         env: { CHROME: /usr/bin/google-chrome }
       - uses: actions/upload-pages-artifact@v3
         with: { path: dist }
