@@ -19,13 +19,14 @@ const run = (args, input) => {
   c.on('exit', (code) => process.exit(code ?? 1));
 };
 const server = process.env.BROWSER_RPC;
+const write = (t) => new Promise((r) => process.stdout.write(t, r));
 const post = async (path, body) => { const r = await fetch(server + path, { method: 'POST', body }); if (!r.ok) throw new Error(`browser-rpc ${r.status}`); return r.text(); };
 if (server) {
-  if (cmd === 'batch') process.stdout.write(await post('/batch', readFileSync(0, 'utf8')));
-  else if (cmd === 'calc') process.stdout.write(await post('/batch', JSON.stringify(JSON.parse(file && file !== '-' ? readFileSync(file, 'utf8') : readFileSync(0, 'utf8'))) + '\n'));
+  if (cmd === 'batch') await write(await post('/batch', readFileSync(0, 'utf8')));
+  else if (cmd === 'calc') await write(await post('/batch', JSON.stringify(JSON.parse(file && file !== '-' ? readFileSync(file, 'utf8') : readFileSync(0, 'utf8'))) + '\n'));
   else if (cmd === 'serve-stdio') {
     const rl = (await import('node:readline')).createInterface({ input: process.stdin, crlfDelay: Infinity });
-    for await (const line of rl) if (line.trim()) process.stdout.write(await post('/rpc', line + '\n'));
+    for await (const line of rl) if (line.trim()) await write(await post('/rpc', line + '\n'));
   } else { console.error('usage: browser-engine.mjs calc [FILE] | batch | serve-stdio'); process.exit(2); }
   process.exit(0);
 }
