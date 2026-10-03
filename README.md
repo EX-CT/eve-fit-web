@@ -46,7 +46,7 @@ It is built on the stateless EXCT engine contract (`calc(FitRequest) -> FitStats
 |---|---|---|
 | `ts-worker` | browser (Web Worker) | variant D TypeScript bundle, built in CI from `EX-CT/eve-dogma-lab@variant-d`. It loads the same release dataset |
 | `wasm-worker` | browser (Web Worker) | variant F Rust→WASM (C-ABI `calc`), built in CI with the release dataset compiled in |
-| `wasm-g4-worker` | browser (Web Worker) | **round-2 prototype**: eve-dogma-lab `graphs-g4` (variant F plus a graph layer, 178/178 on CONTRACT-GRAPHS 0.2), WASM `calc` + `rpc` (`graph`, `graph_specs`). Built in CI next to F. The final graph engine waits for the round-2 winner |
+| `wasm-g4-worker` | browser (Web Worker) | **round-2 prototype**: eve-dogma-lab `graphs-g4` (variant F plus a graph layer, 178/178 on CONTRACT-GRAPHS 0.2), WASM `calc` + `rpc` (`graph`, `graph_specs`). Built in CI from the commit pinned in [`engines.lock`](engines.lock) (`GRAPHS_G4_SHA`; bump = edit that line and push). The final graph engine waits for the round-2 winner |
 | `http` | any engine server | `POST {url}/v1/calc`, `GET {url}/v1/meta` (graph RPC: `POST {url}/v1/graph`, `GET {url}/v1/graph_specs`); e.g. variant C `serve-http`, through `tools/engine-bridge.mjs` for CORS |
 
 Pick a backend in the header, or with `?engine=ts-worker|wasm-worker|wasm-g4-worker|http&http=http://127.0.0.1:8787`.
@@ -82,7 +82,7 @@ node tools/e2e.mjs http://127.0.0.1:5173/eve-fit-web/ ts-worker     # UI end-to-
 `.github/workflows/pages.yml` runs on push, by hand, and every 6 h:
 1. Download the latest `eve-sde-pipeline` release dataset.
 2. Build engine D and engine F (WASM).
-3. Build the site and run a headless Chrome smoke test (the demo fit must compute), then the UI end-to-end test (`tools/e2e.mjs`: EFT import, projected web, beacon, graphs, booster side effect, fleet buff, EFT/DNA export, custom character, fighter abilities) on the TS and WASM backends, and on `wasm-g4-worker`. That run checks that every graph is engine-computed, including a lock-time value against the formula.
+3. Build the site and run a headless Chrome smoke test (the demo fit must compute), then the UI end-to-end test (`tools/e2e.mjs`: EFT import, projected web, beacon, graphs, booster side effect, fleet buff, EFT/DNA export, custom character, fighter abilities) on the TS and WASM backends, and on `wasm-g4-worker`. That run checks that every graph is engine-computed, including a lock-time value against the formula. The same pinned g4 commit, built natively, runs the e2e through `tools/engine-bridge.mjs` on the `http` backend. Finally, the CONTRACT-GRAPHS 0.2 case suite (eve-dogma-bench `graphs-round2`, pinned as `GRAPHS_BENCH_SHA`) runs inside headless Chrome against the deployed `wasm-g4-worker` build: `python3 graphs/run_graphs.py --name web --rpc-cmd "node tools/browser-rpc.mjs <site-url> wasm-g4-worker"`.
 4. Deploy to GitHub Pages.
 
 ## Licence

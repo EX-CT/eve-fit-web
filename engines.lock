@@ -1,0 +1,7 @@
+# Pinned engine sources for the Pages build. One value per line: KEY=full commit SHA. To bump an engine, edit its line
+# and push (the pages workflow reads this file; nothing else needs to change).
+#
+# variant F + graph layer (eve-dogma-lab, branch graphs-g4; round-2 graphs prototype, backend wasm-g4-worker)
+GRAPHS_G4_SHA=33fd7439edcb1cf63ac09c7107776092261b959b
+# CONTRACT-GRAPHS 0.2 case suite (eve-dogma-bench, branch graphs-round2) run in headless Chrome against wasm-g4-worker
+GRAPHS_BENCH_SHA=8c40921911aed9a7d7f032a2f9d4c43986ca0232
