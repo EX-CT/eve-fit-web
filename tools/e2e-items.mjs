@@ -4,7 +4,6 @@ export async function itemChecks({ p, url, sep, engine, check, stats, waitNew, c
   // F and the http bridge (eve-fit, same pin) return the stats-ext outputs; the other engines are only held to the UI
   // hiding what they do not return
   const EXT = engine === 'wasm-worker' || engine === 'http';
-  const PRECISE = engine !== 'ts-worker';
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const load = async (eft, ship) => {
     await p.goto(`${url}${sep}engine=${engine}&eft=${encodeURIComponent(eft)}`, { waitUntil: 'networkidle0', timeout: 120000 });
