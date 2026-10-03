@@ -107,7 +107,7 @@ export function ItemInfo({ ds, id, onClose, fitted, fittedNote, overrides, onOve
             const fmt = (v: number | undefined) => (v == null ? '—' : `${+v.toFixed(4)} ${unit(x.info?.unit)}`);
             const changed = fitted && x.f != null && (x.v == null || Math.abs(x.f - x.v) > 1e-9 * Math.max(1, Math.abs(x.v)));
             const ov = overrides?.[x.a];
-            return <tr key={x.a} className={(changed ? 'changed' : '') + (ov != null ? ' overridden' : '')}><td>{x.info?.display || x.info?.name || x.a}</td><td className="num">{fmt(x.v)}{ov != null && !editOv ? ` → ${+ov.toFixed(4)}` : ''}</td>{fitted && <td className="num">{fmt(x.f)}</td>}
+            return <tr key={x.a} data-attr={x.a} data-name={x.info?.name ?? ''} data-base={x.v ?? ''} data-fitted={x.f ?? ''} className={(changed ? 'changed' : '') + (ov != null ? ' overridden' : '')}><td>{x.info?.display || x.info?.name || x.a}</td><td className="num">{fmt(x.v)}{ov != null && !editOv ? ` → ${+ov.toFixed(4)}` : ''}</td>{fitted && <td className="num">{fmt(x.f)}</td>}
               {editOv && <td><input className="qty wide ovin" data-attr={x.a} type="number" value={ov ?? ''} placeholder="—" onChange={(e) => onOverride!(x.a, e.target.value === '' ? null : +e.target.value)} /></td>}</tr>;
           })}
         </tbody></table>

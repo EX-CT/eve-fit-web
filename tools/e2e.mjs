@@ -154,6 +154,28 @@ await p.evaluate(() => [...document.querySelectorAll('.mod .mname')].find((e) =>
 await p.waitForFunction(() => document.querySelector('.dialog table.attrs thead') || document.querySelector('.dialog')?.textContent.includes('unavailable') || document.querySelector('.dialog')?.textContent.includes('did not return'), { timeout: 30000 });
 const fi = await p.evaluate(() => ({ head: !!document.querySelector('.dialog table.attrs thead'), changed: document.querySelectorAll('.dialog tr.changed').length, note: document.querySelector('.dialog p.muted')?.textContent }));
 check('web.e2e.show-info-fitted-values: show info: fitted attribute values', fi.head && fi.changed > 0, `${fi.changed} changed; ${fi.note}`);
+if (fi.head) {
+  // ENG-CORE-006: every fitted value shown is the engine's (independent include_attributes=all calc of the same fit),
+  // and two of them match the skill formula: Heavy Neutron Blaster II with all skills V on a Vexor (no damage / RoF
+  // modules): damage multiplier x 1.25 (Gallente Cruiser 5 %/level) x 1.25 (Medium Hybrid Turret) x 1.10 (Medium
+  // Blaster Specialization) x 1.15 (Surgical Strike), rate of fire x 0.90 (Gunnery) x 0.80 (Rapid Firing)
+  const fv = await p.evaluate(async () => {
+    const rows = Object.fromEntries([...document.querySelectorAll('.dialog table.attrs tr[data-attr]')].map((r) => [r.dataset.attr, { name: r.dataset.name, base: r.dataset.base === '' ? null : +r.dataset.base, fitted: r.dataset.fitted === '' ? null : +r.dataset.fitted }]));
+    const mi = window.__lastInfoCtx?.module;
+    const req = window.__lastRequest;
+    const r = await window.__eveEngine.calc({ ...req, options: { ...(req.options ?? {}), include_attributes: 'all' } });
+    const mods = r.attributes?.modules ?? [];
+    const eng = (mods.find((m, i) => (m.module_index ?? i) === mi) ?? {}).attributes ?? {};
+    return { rows, eng, mi };
+  });
+  const shown = Object.entries(fv.rows).filter(([, v]) => v.fitted != null);
+  const diff = shown.filter(([, v]) => fv.eng[v.name] == null || Math.abs(v.fitted - fv.eng[v.name]) > 1e-9 * Math.max(1, Math.abs(fv.eng[v.name])));
+  check('web.e2e.show-info-engine-values: every fitted value in show info equals the engine attribute value', shown.length > 10 && !diff.length, `${shown.length} values, module ${fv.mi}; mismatches ${diff.slice(0, 3).map(([, v]) => `${v.name}: ${v.fitted} vs ${fv.eng[v.name]}`).join(', ') || 'none'}`);
+  const near = (a, b) => a != null && b != null && Math.abs(a - b) <= 1e-6 * Math.abs(b);
+  const dm = fv.rows[64], rof = fv.rows[51];
+  check('web.e2e.show-info-skill-formula: fitted damage multiplier and rate of fire match the all-V skill formula', near(dm?.fitted, dm?.base * 1.25 * 1.25 * 1.10 * 1.15) && near(rof?.fitted, rof?.base * 0.9 * 0.8),
+    `damage ${dm?.base} -> ${dm?.fitted} (want ${dm?.base * 1.9765625}); rof ${rof?.base} -> ${rof?.fitted} (want ${rof?.base * 0.72})`);
+}
 // attribute override (Pyfa-style): damageMultiplier of the blaster type
 const wd0 = s.offense?.total?.weapon_dps;
 await p.click('.dialog input.editov');
@@ -223,6 +245,23 @@ const ehp0 = s.defense?.ehp?.total;
 const picked = await p.evaluate(() => { const tr = [...document.querySelectorAll('.profiles tr')].find((r) => r.textContent.includes('[NPC] Guristas Pirates')); tr?.querySelector('input[type=radio]')?.click(); return !!tr; });
 if (picked) s = await waitNew(s);
 check('web.e2e.sde-npc-damage-profile: SDE NPC damage profile (Guristas) changes EHP', picked && s.defense?.ehp?.total !== ehp0, `${ehp0} -> ${s.defense?.ehp?.total}`);
+// PRF-DMG-001: the site's own patterns are only the exact ones (Uniform + one damage type); Pyfa's built-in set is
+// opt-in (GPL data file served next to the site) and its values are Pyfa's, e.g. [NPC][Asteroid]Guristas 0 / 19.8 / 80.2 / 0
+const own = await p.evaluate(() => [...document.querySelectorAll('.profiles table')][0] && [...[...document.querySelectorAll('.profiles table')][0].querySelectorAll('tbody tr')].map((r) => [...r.querySelectorAll('td')].slice(1, 6).map((c) => c.textContent.trim()).join('/')).filter((x) => !x.startsWith('[')));
+check('web.e2e.builtin-damage-exact: the built-in damage patterns are exactly Uniform, EM, Thermal, Kinetic, Explosive', JSON.stringify(own) === JSON.stringify(['Uniform/25/25/25/25', 'EM/100/0/0/0', 'Thermal/0/100/0/0', 'Kinetic/0/0/100/0', 'Explosive/0/0/0/100']), own.join(', '));
+await p.click('.pyfa-toggle');
+const pyRow = await p.waitForFunction(() => { const tr = [...document.querySelectorAll('.profiles tr')].find((r) => r.querySelectorAll('td')[1]?.textContent.trim() === '[NPC][Asteroid]Guristas'); return tr && [...tr.querySelectorAll('td')].slice(2, 6).map((c) => +c.textContent); }, { timeout: 30000 }).then((h) => h.jsonValue()).catch(() => null);
+const pyFile = await p.evaluate(async () => { try { const r = await fetch(new URL('data/presets-pyfa-LGPL-GPL.json', document.baseURI).href); return r.ok ? r.json() : null; } catch { return null; } });
+const pyG = pyFile?.damage?.find((d) => d.name === '[NPC][Asteroid]Guristas');
+const nPy = pyFile?.damage?.length ?? 0;
+const nPyUi = await p.evaluate(() => [...document.querySelectorAll('.profiles tr')].filter((r) => /^\[/.test(r.querySelectorAll('td')[1]?.textContent.trim() ?? '')).length);
+check('web.e2e.pyfa-damage-patterns: Pyfa built-in damage patterns (opt-in) with Pyfa values: [NPC][Asteroid]Guristas 0 / 19.8 / 80.2 / 0', pyRow && JSON.stringify(pyRow) === JSON.stringify([0, 19.8, 80.2, 0]) && pyG && pyRow.every((v, i) => Math.abs(v - Math.round(pyG.ratio[i] * 1000) / 10) < 1e-9) && nPy > 100,
+  `${pyRow?.join('/')}; file ${pyG?.ratio?.join('/')}; ${nPy} Pyfa patterns, ${nPyUi} rows with [ names`);
+await p.evaluate(() => { const tr = [...document.querySelectorAll('.profiles tr')].find((r) => r.querySelectorAll('td')[1]?.textContent.trim() === '[NPC][Asteroid]Guristas'); tr?.querySelector('input[type=radio]')?.click(); });
+s = await waitNew(s);
+const dpReq = await p.evaluate(() => window.__lastRequest?.damage_pattern);
+check('web.e2e.pyfa-damage-pattern-applied: the selected Pyfa pattern is sent to the engine and changes EHP', dpReq && Math.abs(dpReq.thermal / (dpReq.em + dpReq.thermal + dpReq.kinetic + dpReq.explosive) - 0.198) < 1e-3 && s.defense?.ehp?.total !== ehp0, `${JSON.stringify(dpReq)}; EHP ${s.defense?.ehp?.total}`);
+await p.click('.pyfa-toggle');
 await p.evaluate(() => { const tr = [...document.querySelectorAll('.profiles tr')].find((r) => r.textContent.trim().startsWith('Uniform')); tr?.querySelector('input[type=radio]')?.click(); });
 s = await waitNew(s);
 // character: clone All 5 and drop to level 0 -> less dps

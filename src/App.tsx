@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loadSdePresets } from './data/sdePresets';
+import { loadPyfaPresets, pyfaPresetsOn, setPyfaPresetsOn } from './data/pyfaPresets';
 import { setUiLang, t } from './i18n';
 import { Dataset } from './data/dataset';
 import { createEngine, enginePricesLoad, type Engine, type FitStats } from './engine/adapter';
@@ -70,6 +71,23 @@ export default function App() {
   useEffect(() => { loadSdePresets().then((p) => update((s) => ({ ...s, lib: { ...s.lib,
     damagePatterns: { ...s.lib.damagePatterns, ...Object.fromEntries(p.damage.map((d) => [d.id, d])) },
     targetProfiles: { ...s.lib.targetProfiles, ...Object.fromEntries(p.targets.map((t) => [t.id, t])) } } }))); }, [update]);
+  // Pyfa's built-in damage patterns / target profiles (GPL data, separate file, fetched only when turned on)
+  const [pyfaOn, setPyfaOnState] = useState(() => pyfaPresetsOn());
+  const [pyfaNote, setPyfaNote] = useState<string | null>(null);
+  const setPyfaOn = useCallback((on: boolean) => { setPyfaPresetsOn(on); setPyfaOnState(on); }, []);
+  useEffect(() => {
+    const drop = <T,>(o: Record<string, T>) => Object.fromEntries(Object.entries(o).filter(([k]) => !k.startsWith('pyfa:')));
+    if (!pyfaOn) { setPyfaNote(null); update((s) => ({ ...s, lib: { ...s.lib, damagePatterns: drop(s.lib.damagePatterns), targetProfiles: drop(s.lib.targetProfiles) } })); return; }
+    let alive = true;
+    loadPyfaPresets().then((p) => {
+      if (!alive) return;
+      setPyfaNote(p.attribution);
+      update((s) => ({ ...s, lib: { ...s.lib,
+        damagePatterns: { ...s.lib.damagePatterns, ...Object.fromEntries(p.damage.map((d) => [d.id, d])) },
+        targetProfiles: { ...s.lib.targetProfiles, ...Object.fromEntries(p.targets.map((x) => [x.id, x])) } } }));
+    }, (e) => alive && setPyfaNote(`${t('Pyfa presets unavailable')}: ${(e as Error).message}`));
+    return () => { alive = false; };
+  }, [pyfaOn, update]);
   const [addProjected, setAddProjected] = useState(false);
   // prices (engine price block, docs/23): local "my prices" overrides + optional injected latest market snapshot
   const [priceSet, setPriceSetState] = useState<PriceSettings>(() => loadPriceSettings());
@@ -182,7 +200,7 @@ export default function App() {
       engineRef.current!.calc(request).then((r) => {
         if (my !== seq.current) return;
         setStats(r); setCalcErr(null); setMs(performance.now() - t0); setBusy(false);
-        (window as any).__lastStats = r; (window as any).__lastStatsFit = fitId;
+        (window as any).__lastStats = r; (window as any).__lastStatsFit = fitId; (window as any).__lastRequest = request;
       }, (e) => { if (my === seq.current) { setCalcErr(e.message); setBusy(false); } });
     }, 60);
     return () => clearTimeout(t);
@@ -214,6 +232,7 @@ export default function App() {
     const ctx = infoState?.ctx;
     if (!ctx || !request || !engineRef.current) { setFitted(undefined); return; }
     setFitted(null); setFittedNote(undefined);
+    (window as any).__lastInfoCtx = ctx;
     const req = { ...request, options: { ...(request as { options: object }).options, include_attributes: 'all' } };
     let live = true;
     engineRef.current.calc(req).then((r) => {
@@ -289,7 +308,7 @@ export default function App() {
           {left === 'fits' && <FitBrowser ds={ds} lib={lib} activeId={fit?.id ?? null} status={storeStatus}
             onOpen={(id) => update((s) => ({ ...s, settings: { ...s.settings, activeFitId: id } }))} onLib={setLib} />}
           {left === 'char' && <CharacterEditor ds={ds} lib={lib} fit={fit} onLib={setLib} />}
-          {left === 'profiles' && <Profiles lib={lib} fit={fit} onLib={setLib} onFit={setFit} />}
+          {left === 'profiles' && <Profiles lib={lib} fit={fit} onLib={setLib} onFit={setFit} pyfa={{ on: pyfaOn, set: setPyfaOn, note: pyfaNote }} />}
           {left === 'about' && <About cfg={settings.engine} status={engineStatus} st={stats} ds={ds} build={build} graphBackend={graphBackend} />}
         </aside>
         <section className="center">

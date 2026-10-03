@@ -49,6 +49,12 @@ jobs:
           if gh release download "$TAG" -R EX-CT/eve-sde-pipeline -D dl -p presets.json; then
             node tools/slim-presets.mjs dl/presets.json public/data/presets-web.json | tee -a "$GITHUB_STEP_SUMMARY"
           else echo "no presets.json in $TAG: implant sets / NPC profiles disabled" >> "$GITHUB_STEP_SUMMARY"; fi
+          # Pyfa's built-in damage patterns / target profiles: Pyfa data (GPL-3.0) in the pipeline's separate copyleft asset;
+          # deployed as its own file next to the site with its notice + attribution (not in this MIT repo), fetched by the
+          # browser only when the user turns the Pyfa presets on
+          if gh release download "$TAG" -R EX-CT/eve-sde-pipeline -D dl -p presets-pyfa-LGPL-GPL.json; then
+            node tools/slim-presets-pyfa.mjs dl/presets-pyfa-LGPL-GPL.json public/data/presets-pyfa-LGPL-GPL.json | tee -a "$GITHUB_STEP_SUMMARY"
+          else echo "no presets-pyfa-LGPL-GPL.json in $TAG: Pyfa presets unavailable" >> "$GITHUB_STEP_SUMMARY"; fi
           echo "DATASET_TAG=$TAG" >> "$GITHUB_ENV"
           echo "dataset: $TAG ($(ls dl/dataset-*))" >> "$GITHUB_STEP_SUMMARY"
       - name: Latest market price snapshot (EX-CT/eve-market-prices release; served with the site for "update prices")

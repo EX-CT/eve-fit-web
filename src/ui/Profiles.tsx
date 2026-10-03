@@ -5,7 +5,7 @@ const tr = t;
 
 const DT = ['em', 'thermal', 'kinetic', 'explosive'] as const;
 
-export function Profiles({ lib, fit, onLib, onFit }: { lib: Library; fit: Fit | null; onLib: (l: Library) => void; onFit: (f: Fit) => void }) {
+export function Profiles({ lib, fit, onLib, onFit, pyfa }: { lib: Library; fit: Fit | null; onLib: (l: Library) => void; onFit: (f: Fit) => void; pyfa?: { on: boolean; set: (on: boolean) => void; note: string | null } }) {
   const [showSde, setShowSde] = useState(false);
   // SDE-derived NPC profiles (ids 'sde:…', from eve-sde-pipeline presets.json) are hidden unless toggled on or selected.
   const vis = (id: string, sel?: string) => showSde || !id.startsWith('sde:') || id === sel;
@@ -16,6 +16,10 @@ export function Profiles({ lib, fit, onLib, onFit }: { lib: Library; fit: Fit | 
   return (
     <div className="profiles">
       {nSde > 0 && <label className="sdetoggle"><input type="checkbox" checked={showSde} onChange={(e) => setShowSde(e.target.checked)} /> {t('Show NPC profiles from the SDE')} ({nSde})</label>}
+      {pyfa && <div className="pyfa-presets">
+        <label><input type="checkbox" className="pyfa-toggle" checked={pyfa.on} onChange={(e) => pyfa.set(e.target.checked)} /> {t("Pyfa's built-in damage patterns and target profiles")}</label>
+        <div className="muted small">{pyfa.note ?? t('Pyfa data (GPL-3.0), a separate file loaded only when turned on.')} <a href="https://github.com/pyfa-org/Pyfa">{'Pyfa'}</a></div>
+      </div>}
       <h4>{t('Damage patterns (incoming damage, for EHP / RAH)')}</h4>
       <table className="grid small"><thead><tr><th></th><th>{t('name')}</th>{DT.map((k) => <th key={k}>{t(k)}</th>)}<th></th></tr></thead><tbody>
         {dps.map((d) => (

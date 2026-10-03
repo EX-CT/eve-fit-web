@@ -206,4 +206,7 @@ export const ZH: Record<string, string> = {
   'updated snapshot': '更新的快照',
   'value must be a number >= 0': '数值必须 ≥ 0',
   'Price snapshot for "update prices"': '“更新价格”使用的价格快照',
+  "Pyfa's built-in damage patterns and target profiles": 'Pyfa 内置伤害模式和目标配置',
+  'Pyfa data (GPL-3.0), a separate file loaded only when turned on.': 'Pyfa 数据（GPL-3.0），独立文件，仅在开启时加载。',
+  'Pyfa presets unavailable': 'Pyfa 预设不可用',
 };
