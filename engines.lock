@@ -6,7 +6,7 @@
 # eve-dogma-lab variant-f-features 4b8f5f9 with byte-identical output); the web build uses crate eve-wasm (C ABI
 # alloc/dealloc/calc/rpc), the http e2e the eve-cli binary `eve-fit`.
 # Format: <owner/repo>@<full sha>:<directory of the Cargo workspace>.
-ENGINE_F_SRC=EX-CT/eve-dogma@8b85262e6298dfe2e5147cb17207a6e64322fe4e:.
+ENGINE_F_SRC=EX-CT/eve-dogma@1dc951bb2ed377055a3262b4a301b790cc509444:.
 # CONTRACT-GRAPHS 0.2 case suite (eve-dogma-bench, branch graphs-round2) run in headless Chrome against wasm-worker (F)
 GRAPHS_BENCH_SHA=8c40921911aed9a7d7f032a2f9d4c43986ca0232
 # Optional speed reference J (round-1 winner; C++20 -> WASM with Emscripten, backend wasm-j-worker; graphs via F). Format: <owner/repo>@<full sha>:<directory>.
