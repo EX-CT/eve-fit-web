@@ -142,13 +142,13 @@ jobs:
           python3 bench/graphs/run_graphs.py --name web-g4-browser --rpc-cmd "node $GITHUB_WORKSPACE/tools/browser-rpc.mjs http://127.0.0.1:4174/eve-fit-web/ wasm-g4-worker" | tee -a "$GITHUB_STEP_SUMMARY"
           python3 -c "import json,sys; c=json.load(open('bench/results/graphs-web-g4-browser/scorecard.json')); print(f\"browser graphs suite: {c['cases_fully_correct']}/{c['cases']} cases, {c['values_correct']}/{c['values_total']} values\"); sys.exit(c['cases_fully_correct'] != c['cases'])"
         env: { CHROME: /usr/bin/google-chrome }
-      - name: Dogma bench 1.8.0 (326 cases) in the browser build (wasm-j-worker, eve-dogma-bench @ engines.lock DOGMA_BENCH_SHA)
-        if: hashFiles('public/engines/j/evej.wasm') != ''
+      - name: Dogma bench 1.8.0 (326 cases) in the browser build (wasm-worker = F, wasm-j-worker = J; eve-dogma-bench @ engines.lock DOGMA_BENCH_SHA)
         run: |
           git init -q bench180 && git -C bench180 fetch -q --depth 1 https://github.com/EX-CT/eve-dogma-bench "$DOGMA_BENCH_SHA" && git -C bench180 checkout -q FETCH_HEAD
           npx vite preview --host 127.0.0.1 --port 4175 --strictPort &
           for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:4175/eve-fit-web/ && break; sleep 1; done
-          python3 tools/browser-dogma-bench.py bench180 http://127.0.0.1:4175/eve-fit-web/ wasm-j-worker | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ -f public/engines/f/eve_dogma_f.wasm ]; then python3 tools/browser-dogma-bench.py bench180 http://127.0.0.1:4175/eve-fit-web/ wasm-worker | tee -a "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f public/engines/j/evej.wasm ]; then python3 tools/browser-dogma-bench.py bench180 http://127.0.0.1:4175/eve-fit-web/ wasm-j-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "J browser bench failed (optional engine)" >> "$GITHUB_STEP_SUMMARY"; fi
         shell: bash -eo pipefail {0}
         env: { CHROME: /usr/bin/google-chrome }
       - uses: actions/upload-pages-artifact@v3

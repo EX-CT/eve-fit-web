@@ -39,10 +39,10 @@ const asSpecs = (r: any): GraphSpecs | null => (r && !r.error && r.graphs && typ
 export interface EngineConfig { backend: string; httpUrl: string; datasetUrl: string; engineUrl: string; wasmUrl: string; g4WasmUrl?: string; jEngineUrl?: string }
 
 export const BACKENDS: EngineInfo[] = [
-  { id: 'wasm-j-worker', label: 'In-browser: C++20→WASM engine (variant J, round-1 winner) in a Web Worker; graphs via graphs-g4' },
   { id: 'ts-worker', label: 'In-browser: TypeScript engine (variant D) in a Web Worker' },
   { id: 'wasm-worker', label: 'In-browser: Rust→WASM engine (variant F, data compiled in) in a Web Worker' },
   { id: 'wasm-g4-worker', label: 'In-browser: variant F + graph RPC (graphs-g4, round-2 prototype) in a Web Worker' },
+  { id: 'wasm-j-worker', label: 'In-browser (optional, speed reference): C++20→WASM engine (variant J) in a Web Worker; graphs via graphs-g4' },
   { id: 'http', label: 'Local/remote HTTP engine (POST {url}/v1/calc, e.g. variant C serve-http)' },
 ];
 
