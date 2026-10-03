@@ -70,6 +70,7 @@ jobs:
           (cd "lab-f/$dir" && cargo build --profile release-small --target wasm32-unknown-unknown -p eve-wasm -p eve-fit-formats-wasm)
           mkdir -p public/engines/f
           cp "lab-f/$dir/target/wasm32-unknown-unknown/release-small/eve_wasm.wasm" "lab-f/$dir/target/wasm32-unknown-unknown/release-small/eve_fit_formats_wasm.wasm" public/engines/f/
+          for w in eve_wasm.wasm eve_fit_formats_wasm.wasm; do test -s "public/engines/f/$w" || { echo "F build produced no $w" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; }; done
           cp "lab-f/$dir/LICENSE" public/engines/f/LICENSE 2>/dev/null || true
           d=${dir#.}; { echo "ENGINE_F=$(git -C lab-f rev-parse --short HEAD)"; echo "ENGINE_F_REPO=$src"; echo "ENGINE_F_DIR=${d#/}"; } >> "$GITHUB_ENV"
           # native serve-stdio build (eve-cli, binary eve-fit) for the http-backend e2e (tools/engine-bridge.mjs); not deployed
@@ -93,7 +94,9 @@ jobs:
           { echo "ENGINE_J=$(git -C lab-j rev-parse --short HEAD)"; echo "ENGINE_J_REPO=$src"; echo "ENGINE_J_DIR=${dir#.}"; } >> "$GITHUB_ENV"
       - name: Build info
         run: |
-          # never deploy a default backend whose engine was not built (its build steps are continue-on-error)
+          # F (default backend, graphs, bench) and the formats module are hard requirements, whatever the default backend
+          for w in eve_wasm.wasm eve_fit_formats_wasm.wasm; do test -s "public/engines/f/$w" || { echo "engine F module $w is missing: not deploying" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; }; done
+          # never deploy a default backend whose engine was not built (optional engines are continue-on-error)
           case "$DEFAULT_ENGINE" in
             wasm-j-worker)  need=public/engines/j/evej.wasm ;;
             wasm-worker)    need=public/engines/f/eve_wasm.wasm ;;
@@ -136,6 +139,8 @@ jobs:
           for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:4174/eve-fit-web/ && break; sleep 1; done
           python3 bench/graphs/run_graphs.py --name web-f-browser --rpc-cmd "node $GITHUB_WORKSPACE/tools/browser-rpc.mjs http://127.0.0.1:4174/eve-fit-web/ wasm-worker" | tee -a "$GITHUB_STEP_SUMMARY"
           python3 -c "import json,sys; c=json.load(open('bench/results/graphs-web-f-browser/scorecard.json')); print(f\"browser graphs suite: {c['cases_fully_correct']}/{c['cases']} cases, {c['values_correct']}/{c['values_total']} values\"); sys.exit(c['cases_fully_correct'] != c['cases'])"
+        # always runs and always gates (F is a hard requirement)
+        shell: bash -eo pipefail {0}
         env: { CHROME: /usr/bin/google-chrome }
       - name: Dogma bench 1.9.0 (331 cases) in the browser build (wasm-worker = F gates the deploy, wasm-j-worker = J optional; eve-dogma-bench @ engines.lock DOGMA_BENCH_SHA)
         run: |
