@@ -152,6 +152,22 @@ jobs:
           if [ -f public/engines/j/evej.wasm ]; then python3 tools/browser-dogma-bench.py benchstats http://127.0.0.1:4175/eve-fit-web/ wasm-j-worker | tee -a "$GITHUB_STEP_SUMMARY" || echo "J browser bench failed (optional engine)" >> "$GITHUB_STEP_SUMMARY"; fi
         shell: bash -eo pipefail {0}
         env: { CHROME: /usr/bin/google-chrome }
+      - name: Bench ext (stats-ext 1.10/1.11) and effects suites in the browser build (wasm-worker = F gates the deploy; eve-dogma-bench @ engines.lock EXT_BENCH_SHA)
+        # suites web-ext (ext/cases + ext/unit: mining, outgoing reps, bombing, drone/fighter EHP, heat, fleet buffs, overrides,
+        # probe size, validity, vs target profile) and web-effects (effects/ micro-fits, at least EFFECTS_MIN), scored by the
+        # bench's own score.py; the batch command is the site's engine adapter in headless Chrome (tools/browser-rpc.mjs)
+        run: |
+          git init -q benchext && git -C benchext fetch -q --depth 1 https://github.com/EX-CT/eve-dogma-bench "$EXT_BENCH_SHA" && git -C benchext checkout -q FETCH_HEAD
+          npx vite preview --host 127.0.0.1 --port 4176 --strictPort &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:4176/eve-fit-web/ && break; sleep 1; done
+          cmd="node $GITHUB_WORKSPACE/tools/browser-rpc.mjs http://127.0.0.1:4176/eve-fit-web/ wasm-worker --batch"
+          (cd benchext && python3 ext/tools/score.py --batch-cmd "$cmd" --name browser-wasm-worker) | tee "$RUNNER_TEMP/ext.txt" | tee -a "$GITHUB_STEP_SUMMARY"
+          grep -qE 'ext suite ([0-9]+)/\1 pass' "$RUNNER_TEMP/ext.txt" || { echo "web-ext: not every case passes" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; }
+          (cd benchext && python3 effects/tools/score.py --batch-cmd "$cmd" --name browser-wasm-worker) | tee "$RUNNER_TEMP/effects.txt" | tee -a "$GITHUB_STEP_SUMMARY"
+          n=$(sed -nE 's/.*effect suite ([0-9]+)\/[0-9]+ pass.*/\1/p' "$RUNNER_TEMP/effects.txt")
+          test "${n:-0}" -ge "$EFFECTS_MIN" || { echo "web-effects: $n < EFFECTS_MIN $EFFECTS_MIN" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; }
+        shell: bash -eo pipefail {0}
+        env: { CHROME: /usr/bin/google-chrome }
       - uses: actions/upload-pages-artifact@v3
         with: { path: dist }
   deploy:
